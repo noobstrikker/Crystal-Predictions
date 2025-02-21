@@ -28,7 +28,6 @@ def ApiDownloader(size,filename):
             file.write(str(material.cbm) + ", ")
             file.write(str(material.density) + ", ")
             file.write(str(material.density_atomic) + ", ")
-            file.write(str(material.cbm) + ", ")
             file.write(str(material.density) + ", ")
             file.write(str(material.density_atomic) + ", ")
             file.write(str(material.dos_energy_down) + ", ")
