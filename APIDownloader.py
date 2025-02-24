@@ -28,8 +28,6 @@ def ApiDownloader(size,filename):
             file.write(str(material.cbm) + ", ")
             file.write(str(material.density) + ", ")
             file.write(str(material.density_atomic) + ", ")
-            file.write(str(material.density) + ", ")
-            file.write(str(material.density_atomic) + ", ")
             file.write(str(material.dos_energy_down) + ", ")
             file.write(str(material.dos_energy_up) + ", ")
             file.write(str(material.e_electronic) + ", ")
@@ -54,7 +52,8 @@ def ApiDownloader(size,filename):
             file.write(str(material.volume) + ", ")
             file.write(str(material.weighted_surface_energy) + ", ")
             file.write(str(material.weighted_surface_energy_EV_PER_ANG2) + ", ")
-            file.write(str(material.weighted_work_function))
+            file.write(str(material.weighted_work_function)+ ", ") 
+            #hate me for "", " on the last one but it makes it eaiser to unravel of the otherside insted of doing mental gymnastics 
 
             file.write("\n")
             
