@@ -1,7 +1,7 @@
 from mp_api.client import MPRester
 
 #ik abuse min key :)
-API_KEY = '3pY5xARryp2zkZkILLrWtz8zUqiSlnZZ'
+API_KEY = 'IS6TwOxOeYersNg4efiFpvXjAsWQmwC6'
 
 
 #size is the amount of crystals we wanted to importet, filename is what it is called if we want differnt file thingymabobs to have fun with

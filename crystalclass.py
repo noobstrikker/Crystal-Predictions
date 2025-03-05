@@ -17,7 +17,7 @@ class crystal:
         self.e_total = e_total
         self.efermi = efermi
         self.energy_above_hull = energy_above_hull
-        self.energy_per_aton = energy_per_atom
+        self.energy_per_atom = energy_per_atom
         self.equilibrium_reaction_energy_per_atom = equilibrium_reaction_energy_per_atom
         self.formation_energy_per_atom = formation_energy_per_atom
         self.homogeneous_poisson = homogeneous_poisson
