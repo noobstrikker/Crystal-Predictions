@@ -7,9 +7,9 @@ ApiDownloader(3,"3test") #because of induction if we can do k+1 we can do unlimt
 #propperly needs to do /../ before 3test if we put this in a test folder
 testarray = LoadFromDisc("3test",3)
 #if these prints "mp-xxxxxx" and x being random numbers test is complete
-print(testarray[0].material_id + "\n")
-print(testarray[1].material_id + "\n")
-print(testarray[2].material_id + "\n")
+print(testarray[0].material_id + str(testarray[0].is_metal)+"\n")
+print(testarray[1].material_id + str(testarray[1].is_metal)+"\n")
+print(testarray[2].material_id + str(testarray[2].is_metal)+"\n")
 
 #as of 10:37 24/02 don't run this i man missing 2-4 lines of code cuz shit
 #nvm i just made it look stupid when read from human form but eaiser to code
