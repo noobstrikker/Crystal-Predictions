@@ -3,7 +3,7 @@ class crystal:
                     e_ij_max, e_ionic, e_total, efermi, energy_above_hull, energy_per_atom, equilibrium_reaction_energy_per_atom,
                     formation_energy_per_atom, homogeneous_poisson, n, shape_factor, surface_anisotropy, total_magnetization,
                     total_magnetization_normalized_formula_units, total_magnetization_normalized_vol, uncorrected_energy_per_atom,
-                    universal_anisotropy, vbm, volume, weighted_surface_energy, weighted_surface_energy_EV_PER_ANG2,weighted_work_function,is_metal):
+                    universal_anisotropy, vbm, volume, weighted_surface_energy, weighted_surface_energy_EV_PER_ANG2,weighted_work_function):
         self.material_id = material_id
         self.band_gap = band_gap
         self.cbm = cbm
@@ -34,5 +34,4 @@ class crystal:
         self.weighted_surface_energy = weighted_surface_energy
         self.weighted_surface_energy_EV_PER_ANG2 = weighted_surface_energy_EV_PER_ANG2
         self.weighted_work_function = weighted_work_function
-        self.is_metal = is_metal
 
