@@ -15,7 +15,7 @@ def get_materails_data(size):
                     "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
                     "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
                     "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
-                    "weighted_work_function" "is_metal"],
+                    "weighted_work_function"],
             num_chunks=1,
             #Antal crystals
             chunk_size=size
