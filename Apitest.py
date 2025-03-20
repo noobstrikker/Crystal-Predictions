@@ -1,7 +1,7 @@
 from mp_api.client import MPRester
 
 #ik abuse min key :)
-API_KEY = '3pY5xARryp2zkZkILLrWtz8zUqiSlnZZ'
+API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 with MPRester(API_KEY) as mpr:
     #Fetch
@@ -11,7 +11,7 @@ with MPRester(API_KEY) as mpr:
         #Antal crystals
         chunk_size=10
     )
-
+    
     #Print
     for material in materials:
         print(f"ID: {material.material_id}, Formula: {material.formula_pretty}, Band Gap: {material.band_gap} eV")

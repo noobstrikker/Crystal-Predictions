@@ -15,7 +15,7 @@ def get_materails_data(size):
                     "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
                     "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
                     "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
-                    "weighted_work_function" "is_metal"],
+                    "weighted_work_function","is_metal"],
             num_chunks=1,
             #Antal crystals
             chunk_size=size
@@ -56,6 +56,7 @@ def save_data_local(filename,materials):
         file.write(str(material.weighted_surface_energy) + ", ")
         file.write(str(material.weighted_surface_energy_EV_PER_ANG2) + ", ")
         file.write(str(material.weighted_work_function)+ ", ") 
+        file.write(str(material.is_metal)+ ", ") 
         #hate me for "", " on the last one but it makes it eaiser to unravel of the otherside insted of doing mental gymnastics 
 
         file.write("\n")
@@ -67,19 +68,21 @@ def save_data_local(filename,materials):
 
 
 def ReadFileToComma(file):
-    currectword = ""
+    currentword = ""
     while(True):
             cl = file.read(1)
             if cl == ",":
                 file.read(1)#skips space after ,
-                if currectword == "None":
-                     currectword = "0" # or 0 but there is a diffrence is some cases of the logic
+                if currentword == "None":
+                     currentword = "Null" # or 0 but there is a diffrence is some cases of the logic
                 break
             if cl == "\n":
                  1+1
             else:
-                currectword += cl            
-    return currectword
+                currentword += cl 
+    if (currentword.replace('.','',1).replace('-','',1).isdigit()):
+            currentword = float(currentword)
+    return currentword
     
 
 
@@ -90,40 +93,42 @@ def load_data_local(filename, amount):
     for x in range(amount): # its from to 0 to "> amount"
         
         material_id = ReadFileToComma(file) #only string rest is floats, do some covertation
-        band_gap = float(ReadFileToComma(file))
-        cbm = float(ReadFileToComma(file))
-        density = float(ReadFileToComma(file))
-        density_atomic = float(ReadFileToComma(file))
-        dos_energy_down = float(ReadFileToComma(file))
-        dos_energy_up = float(ReadFileToComma(file))
-        e_electronic = float(ReadFileToComma(file))
-        e_ij_max = float(ReadFileToComma(file))
-        e_ionic = float(ReadFileToComma(file))
-        e_total = float(ReadFileToComma(file))
-        efermi = float(ReadFileToComma(file))
-        energy_above_hull = float(ReadFileToComma(file))
-        energy_per_atom = float(ReadFileToComma(file))
-        equilibrium_reaction_energy_per_atom = float(ReadFileToComma(file))
-        formation_energy_per_atom = float(ReadFileToComma(file))
-        homogeneous_poisson = float(ReadFileToComma(file))
-        n = float(ReadFileToComma(file))
-        shape_factor = float(ReadFileToComma(file))
-        surface_anisotropy = float(ReadFileToComma(file))
-        total_magnetization = float(ReadFileToComma(file))
-        total_magnetization_normalized_formula_units = float(ReadFileToComma(file))
-        total_magnetization_normalized_vol = float(ReadFileToComma(file))
-        uncorrected_energy_per_atom = float(ReadFileToComma(file))
-        universal_anisotropy = float(ReadFileToComma(file))
-        vbm = float(ReadFileToComma(file))
-        volume = float(ReadFileToComma(file))
-        weighted_surface_energy = float(ReadFileToComma(file))
-        weighted_surface_energy_EV_PER_ANG2 = float(ReadFileToComma(file))
-        weighted_work_function = float(ReadFileToComma(file))
+        band_gap = ReadFileToComma(file)
+        cbm = ReadFileToComma(file)
+        density = ReadFileToComma(file)
+        density_atomic = ReadFileToComma(file)
+        dos_energy_down = ReadFileToComma(file)
+        dos_energy_up = ReadFileToComma(file)
+        e_electronic = ReadFileToComma(file)
+        e_ij_max = ReadFileToComma(file)
+        e_ionic = ReadFileToComma(file)
+        e_total = ReadFileToComma(file)
+        efermi = ReadFileToComma(file)
+        energy_above_hull = ReadFileToComma(file)
+        energy_per_atom = ReadFileToComma(file)
+        equilibrium_reaction_energy_per_atom = ReadFileToComma(file)
+        formation_energy_per_atom = ReadFileToComma(file)
+        homogeneous_poisson = ReadFileToComma(file)
+        n = ReadFileToComma(file)
+        shape_factor = ReadFileToComma(file)
+        surface_anisotropy = ReadFileToComma(file)
+        total_magnetization = ReadFileToComma(file)
+        total_magnetization_normalized_formula_units = ReadFileToComma(file)
+        total_magnetization_normalized_vol = ReadFileToComma(file)
+        uncorrected_energy_per_atom = ReadFileToComma(file)
+        universal_anisotropy = ReadFileToComma(file)
+        vbm = ReadFileToComma(file)
+        volume = ReadFileToComma(file)
+        weighted_surface_energy = ReadFileToComma(file)
+        weighted_surface_energy_EV_PER_ANG2 = ReadFileToComma(file)
+        weighted_work_function = ReadFileToComma(file)
+        is_metal = ReadFileToComma(file)
         
         materials.append(crystal(material_id,band_gap, cbm, density, density_atomic, dos_energy_down, dos_energy_up, e_electronic,
                     e_ij_max, e_ionic, e_total, efermi, energy_above_hull, energy_per_atom, equilibrium_reaction_energy_per_atom,
                     formation_energy_per_atom, homogeneous_poisson, n, shape_factor, surface_anisotropy, total_magnetization,
                     total_magnetization_normalized_formula_units, total_magnetization_normalized_vol, uncorrected_energy_per_atom,
-                    universal_anisotropy, vbm, volume, weighted_surface_energy, weighted_surface_energy_EV_PER_ANG2,weighted_work_function))
+                    universal_anisotropy, vbm, volume, weighted_surface_energy, weighted_surface_energy_EV_PER_ANG2,weighted_work_function,
+                    is_metal))
     file.close
     return materials
