@@ -2,7 +2,7 @@ import torch
 from torch_geometric.data import Data
 from pymatgen.core.structure import Structure
 
-def structure_to_pygdata(
+def build_graph(
     structure: Structure,
     label: float = None,
     cutoff: float = 5.0
@@ -19,7 +19,6 @@ def structure_to_pygdata(
     # --------------------
     # 1) Build node features
     # --------------------
-    # As a simple example, let's store the atomic number of the first element in each site.
     atomic_numbers = []
     for site in structure.sites:
         # If there's only one species per site, this is straightforward:
@@ -27,15 +26,14 @@ def structure_to_pygdata(
         # Or, if partial occupancy, you might combine multiple elements.
         atomic_numbers.append(element.Z)
     
-    # Convert to a tensor of shape [num_nodes, num_node_features].
-    # Here, node_features=1 => we have just the atomic number.
+    # Here, node_features=1 => we have just the atomic number for now.
     x = torch.tensor(atomic_numbers, dtype=torch.float).view(-1, 1)
 
     # --------------------
     # 2) Determine edges (neighbors within cutoff)
     # --------------------
     # pymatgen provides a get_neighbor_list method:
-    #   i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
+    # i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
     # which returns arrays of neighbor indices (i, j) and their distances.
     i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
     
@@ -86,7 +84,7 @@ def batch_structures_to_graphs(data_list, cutoff=5.0):
     for entry in data_list:
         structure = entry["structure"]
         
-        # If you want a classification label, e.g. metal => 1, non-metal => 0
+        
         if "is_metal" in entry and entry["is_metal"] is not None:
             label_val = 1.0 if entry["is_metal"] else 0.0
         else:
