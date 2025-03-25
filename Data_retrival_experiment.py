@@ -2,7 +2,7 @@ from mp_api.client import MPRester
 from pymatgen.core import Structure
 from crystalclass import crystal
 
-API_KEY = 'YOUR_API_KEY'
+API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 
 def get_materails_data(size):
