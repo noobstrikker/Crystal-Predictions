@@ -16,9 +16,8 @@ def build_graph(
     :return: PyTorch Geometric Data object with node features, edges, etc.
     """
 
-    # --------------------
+    
     # 1) Build node features
-    # --------------------
     atomic_numbers = []
     for site in structure.sites:
         # If there's only one species per site, this is straightforward:
@@ -26,15 +25,10 @@ def build_graph(
         # Or, if partial occupancy, you might combine multiple elements.
         atomic_numbers.append(element.Z)
     
-    # Here, node_features=1 => we have just the atomic number for now.
     x = torch.tensor(atomic_numbers, dtype=torch.float).view(-1, 1)
 
-    # --------------------
+    
     # 2) Determine edges (neighbors within cutoff)
-    # --------------------
-    # pymatgen provides a get_neighbor_list method:
-    # i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
-    # which returns arrays of neighbor indices (i, j) and their distances.
     i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
     
     # Construct edge_index: a [2, num_edges] tensor listing which nodes are connected
@@ -43,9 +37,8 @@ def build_graph(
     # We can store distances (and possibly other features) as edge_attr
     edge_attr = torch.tensor(distances, dtype=torch.float).view(-1, 1)
 
-    # --------------------
+   
     # 3) Create Data object
-    # --------------------
     data = Data(
         x=x,                  # Node features
         edge_index=edge_index,
@@ -90,7 +83,7 @@ def batch_structures_to_graphs(data_list, cutoff=5.0):
         else:
             label_val = None
         
-        graph = structure_to_pygdata(structure, label=label_val, cutoff=cutoff)
+        graph = build_graph(structure, label=label_val, cutoff=cutoff)
         all_graphs.append((entry["material_id"], graph))
 
     return all_graphs
