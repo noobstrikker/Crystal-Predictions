@@ -4,6 +4,7 @@ import torch.optim as optim
 from model import CrystalGNN
 import numpy as np
 from sklearn.model_selection import train_test_split
+from evaluation import evaluate_model_performance
 
 def train_model(model, train_loader, optimizer, criterion, device):
     model.train()
@@ -38,6 +39,9 @@ def evaluate_model(model, test_loader, criterion, device):
 def main():
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Evaluation of model performance (after training)
+    metrics = evaluate_model_performance(model, test_loader, device, property_name='Target Property')
     
     # Hyperparameters
     BATCH_SIZE = 32
