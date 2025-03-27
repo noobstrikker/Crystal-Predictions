@@ -29,7 +29,7 @@ def build_graph(
 
     
     # 2) Determine edges (neighbors within cutoff)
-    i_indices, j_indices, distances = structure.get_neighbor_list(r=cutoff)
+    i_indices, j_indices, images, distances = structure.get_neighbor_list(r=cutoff)
     
     # Construct edge_index: a [2, num_edges] tensor listing which nodes are connected
     edge_index = torch.tensor([i_indices, j_indices], dtype=torch.long)
@@ -45,9 +45,7 @@ def build_graph(
         edge_attr=edge_attr
     )
 
-    # If you have a label (e.g., 1 = metal, 0 = not metal), store it
-    if label is not None:
-        # shape [1] so it's consistent with how PyTorch Geometric expects a label
+    if label is not None and not isinstance(label, type(None)):
         data.y = torch.tensor([label], dtype=torch.float)
 
     return data
