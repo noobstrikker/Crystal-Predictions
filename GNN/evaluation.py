@@ -18,7 +18,15 @@ Will be changed a bit, when a model is trained, and we actually have a state dic
 
 def evaluate_predictions(model, test_loader, device):
     """
-    Evaluate model predictions and return true vs predicted values
+    Inputs:
+        model: PyTorch GNN model to evaluate
+        test_loader: PyTorch Geometric DataLoader containing test data
+        device: torch.device for model computation
+
+    Returns:
+        tuple: (y_true, y_pred)
+            - y_true: numpy array of true values
+            - y_pred: numpy array of predicted values
     """
     
     model.eval()
@@ -36,7 +44,16 @@ def evaluate_predictions(model, test_loader, device):
 
 def calculate_metrics(y_true, y_pred):
     """
-    Calculate regression metrics
+    Inputs:
+        y_true: numpy array of true values
+        y_pred: numpy array of predicted values
+
+    Returns:
+        dict: Dictionary containing metrics:
+            - 'mse': Mean squared error
+            - 'rmse': Root mean squared error
+            - 'mae': Mean absolute error
+            - 'r2': R-squared score
     """
     metrics = {
         'mse': mean_squared_error(y_true, y_pred),
@@ -48,7 +65,14 @@ def calculate_metrics(y_true, y_pred):
 
 def plot_predictions(y_true, y_pred, property_name='Property', save_path=None):
     """
-    Scatter plot of predicted vs true values
+    Inputs:
+        y_true: numpy array of true values
+        y_pred: numpy array of predicted values
+        property_name: String name of the property being plotted
+        save_path: Optional path to save the plot. If None, plot is not saved
+
+    Returns:
+        None
     """
     plt.figure(figsize=(8, 8))
     plt.scatter(y_true, y_pred, alpha=0.5)
@@ -63,7 +87,19 @@ def plot_predictions(y_true, y_pred, property_name='Property', save_path=None):
 
 def evaluate_model_performance(model, test_loader, device, property_name='Property', save_plots=True):
     """
-    Model evaluation function
+    Inputs:
+        model: PyTorch GNN model to evaluate
+        test_loader: PyTorch Geometric DataLoader containing test data
+        device: torch.device for model computation
+        property_name: String name of the property being predicted
+        save_plots: Boolean flag for saving prediction plots
+
+    Returns:
+        dict: Dictionary containing metrics:
+            - 'mse': Mean squared error
+            - 'rmse': Root mean squared error
+            - 'mae': Mean absolute error
+            - 'r2': R-squared score
     """
     # Get predictions
     y_true, y_pred = evaluate_predictions(model, test_loader, device)
