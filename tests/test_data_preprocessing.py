@@ -1,5 +1,4 @@
 import unittest
-
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -90,23 +89,29 @@ class TestDataPreprocessing(unittest.TestCase):
             is_metal=True
         )
 
+        self.mock_structure = "mock_structure"
+
     def test_extract_label(self):
-        materials = [self.crystal1, self.crystal2, self.crystal3]
-        labeled_data = extract_label(materials)
+        data = [(self.crystal1, self.mock_structure), 
+                    (self.crystal2, self.mock_structure), 
+                    (self.crystal3, self.mock_structure)]
+        labeled_data = extract_label(data)
         
         # Should have 2 items (crystal3 has is_metal="Null")
         self.assertEqual(len(labeled_data), 2)
         
         # Check is_metal was removed and labels are correct
-        labels = [label for _, label in labeled_data]
+        labels = [label for _, _ , label in labeled_data]
         self.assertIn(True, labels)
         self.assertIn(False, labels)
         
-        for material, _ in labeled_data:
-            self.assertFalse(hasattr(material, 'is_metal'))
+        for crystal_obj, _ , _ in labeled_data:
+            self.assertFalse(hasattr(crystal_obj, 'is_metal'))
 
     def test_split_data(self):
-        data = [(self.crystal1, True), (self.crystal2, False), (self.crystal3, True)]
+        data = [(self.crystal1, self.mock_structure, True), 
+               (self.crystal2, self.mock_structure, False), 
+               (self.crystal3, self.mock_structure, True)]
         
         # Test default ratios (80/10/10)
         train, val, test = split_data(data.copy())
@@ -121,37 +126,41 @@ class TestDataPreprocessing(unittest.TestCase):
         self.assertEqual(len(test), 2)   # Remainder (3 - 1 - 0 = 2)
 
     def test_filter_unique_by_id(self):
-        data = [(self.crystal1, True), (self.crystal2, False), (self.crystal3, True)]
+        data = [(self.crystal1, self.mock_structure, True), 
+               (self.crystal2, self.mock_structure, False), 
+               (self.crystal3, self.mock_structure, True)]
         filtered = filter_unique_by_id(data)
         
         # Should have 2 items (crystal1 and crystal3 have same ID)
         self.assertEqual(len(filtered), 2)
-        ids = [material.material_id for material, _ in filtered]
+        ids = [crystal_obj.material_id for crystal_obj, _, _ in filtered]
         self.assertIn("id1", ids)
         self.assertIn("id2", ids)
 
     def test_remove_all_null(self):
-        data = [(self.crystal1, True), (self.crystal2, False)]
+        data = [(self.crystal1, self.mock_structure, True), 
+               (self.crystal2, self.mock_structure, False)]
         filtered = remove_all_null(data)
         
         # Verify we still have 2 items
         self.assertEqual(len(filtered), 2)
         
         # Check crystal1 (had density="Null")
-        material1 = filtered[0][0]
-        self.assertFalse(hasattr(material1, 'density'), "density should be removed from crystal1")
-        self.assertTrue(hasattr(material1, 'band_gap'), "band_gap should remain in crystal1")
-        self.assertEqual(material1.band_gap, 1.0)
+        crystal1 = filtered[0][0]
+        self.assertFalse(hasattr(crystal1, 'density'), "density should be removed from crystal1")
+        self.assertTrue(hasattr(crystal1, 'band_gap'), "band_gap should remain in crystal1")
+        self.assertEqual(crystal1.band_gap, 1.0)
         
         # Check crystal2 (had band_gap="Null" and weighted_surface_energy="Null")
-        material2 = filtered[1][0]
-        self.assertFalse(hasattr(material2, 'band_gap'), "band_gap should be removed from crystal2")
-        self.assertFalse(hasattr(material2, 'weighted_surface_energy'), "weighted_surface_energy should be removed from crystal2")
-        self.assertTrue(hasattr(material2, 'density'), "density should remain in crystal2")
-        self.assertEqual(material2.density, 3.0)
+        crystal2 = filtered[1][0]
+        self.assertFalse(hasattr(crystal2, 'band_gap'), "band_gap should be removed from crystal2")
+        self.assertFalse(hasattr(crystal2, 'weighted_surface_energy'), "weighted_surface_energy should be removed from crystal2")
+        self.assertTrue(hasattr(crystal2, 'density'), "density should remain in crystal2")
+        self.assertEqual(crystal2.density, 3.0)
 
     def test_check_against_example(self):
-        data = [(self.crystal1, True), (self.crystal2, False)]
+        data = [(self.crystal1, self.mock_structure, True), 
+               (self.crystal2, self.mock_structure, False)]
         
         # Test with example that has band_gap=None and density="Null"
         filtered = check_against_example(data, self.example_crystal)
@@ -171,10 +180,10 @@ class TestDataPreprocessing(unittest.TestCase):
 
     def test_filter_data_integration(self):
         data = [
-            (self.crystal1, True),
-            (self.crystal2, False),
-            (self.crystal3, True),  # Duplicate ID
-            (create_test_crystal(material_id="id3", band_gap="Null", cbm=1.0, is_metal=True), True)
+            (self.crystal1, self.mock_structure, True),
+            (self.crystal2, self.mock_structure, False),
+            (self.crystal3, self.mock_structure, True),  # Duplicate ID
+            (create_test_crystal(material_id="id3", band_gap="Null", cbm=1.0, is_metal=True), self.mock_structure, True)
         ]
         
         # Filter data using example_crystal as template
@@ -190,9 +199,9 @@ class TestDataPreprocessing(unittest.TestCase):
         self.assertTrue(filtered[0][1])  # Label should be True
         
         # Check that the filtering was applied correctly
-        self.assertFalse(hasattr(filtered[0][0], 'density'))  # Removed because example has density="Null"
-        self.assertTrue(hasattr(filtered[0][0], 'band_gap'))  # Kept because example expects band_gap
-        self.assertTrue(hasattr(filtered[0][0], 'cbm'))       # Kept because example expects cbm
+        self.assertFalse(hasattr(filtered[0][0], 'density'))
+        self.assertTrue(hasattr(filtered[0][0], 'band_gap'))
+        self.assertTrue(hasattr(filtered[0][0], 'cbm'))
         
 if __name__ == '__main__':
     unittest.main()
