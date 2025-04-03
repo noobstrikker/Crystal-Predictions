@@ -1,10 +1,10 @@
 import torch
 from torch_geometric.data import DataLoader
 import torch.optim as optim
-from model import CrystalGNN
+from GNN.my_model import *
 import numpy as np
 from sklearn.model_selection import train_test_split
-from evaluation import evaluate_model_performance
+from GNN.evaluation import evaluate_model_performance
 
 
 def train_model(model, train_loader, optimizer, criterion, device):

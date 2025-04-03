@@ -3,7 +3,7 @@ from data_retrival import *
 from data_preprocessing import *
 from graph_builder import *
 from torch_geometric.data import DataLoader
-from GNN.model import * 
+from GNN.my_model import * 
 from GNN.train import *
 
 
@@ -24,8 +24,7 @@ def main():
     # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-    # Evaluation of model performance (after training)
-    metrics = evaluate_model_performance(model, test_loader, device, property_name='Target Property')
+   
     
     # Hyperparameters
     BATCH_SIZE = 32
@@ -38,7 +37,7 @@ def main():
     
 
     # Load dataset
-    dataset = load_data_local("Mads100",100)  # small run first
+    dataset = load_data_local("Mads100")  # small run first
 
     # We still need to convert the crystal objects into PyTorch Geometric Data objects. How will we represent the crystal structure?
 
@@ -50,14 +49,15 @@ def main():
         #test_size=0.2, 
         #random_state=42
     #)
-    
+    graphed_data = build_graph_batch(extract_label(train_dataset))
+    graphed_test_data = build_graph_batch(extract_label(test_dataset))
 
     #
 
     
     # Create data loaders
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+    train_loader = DataLoader(graphed_data, batch_size=BATCH_SIZE, shuffle=True)
+    test_loader = DataLoader(graphed_test_data, batch_size=BATCH_SIZE)
     
     # Initialize model
     model = CrystalGNN(
@@ -84,5 +84,7 @@ def main():
         if (epoch + 1) % 10 == 0:
             print(f'Epoch: {epoch+1:03d}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}')
 
+     # Evaluation of model performance (after training)
+    metrics = evaluate_model_performance(model, test_loader, device, property_name='Target Property')
 if __name__ == '__main__':
     main()

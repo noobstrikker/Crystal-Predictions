@@ -3,7 +3,7 @@
 from data_retrival import *
 
 
-if True:
+if False:
     data = load_data_local("Mads100")
     print(data[99][0].material_id)   
 else:

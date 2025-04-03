@@ -57,20 +57,21 @@ def build_graph_batch(
     results = []
     for item in data_list:
         # Case 1: dict with structure, label, etc.
-        if isinstance(item, dict):
-            structure = item["structure"]
+        if isinstance(item, tuple) and len(item) == 3:
+            structure = item[1]
             # handle label if present
             if label_key in item:
-                label = item[label_key]
+                label = item[2]
             # or item.get("is_metal") if that’s how you store it
             else:
-                label = None
+                label = item[2]
+            print(structure)
             data = build_graph(structure, label=label, cutoff=cutoff)
 
-        # Case 2: tuple of (structure, label)
+        # Case 2: tuple of (crystalproperites, structure)
         elif isinstance(item, tuple) and len(item) == 2:
             (structure, label) = item
-            data = build_graph(structure, label=label, cutoff=cutoff)
+            data = build_graph(item[1], item[0].is_metal, cutoff=cutoff)
 
         # Case 3: just a Structure
         else:
