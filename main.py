@@ -37,7 +37,7 @@ def main():
     
 
     # Load dataset
-    dataset = load_data_local("Mads100")  # small run first
+    dataset = load_data_local("Mads5")  # small run first
 
     # We still need to convert the crystal objects into PyTorch Geometric Data objects. How will we represent the crystal structure?
 
@@ -56,14 +56,13 @@ def main():
 
     
     # Create data loaders
-    train_loader = DataLoader(graphed_data, batch_size=BATCH_SIZE, shuffle=True)
-    test_loader = DataLoader(graphed_test_data, batch_size=BATCH_SIZE)
+    train_loader = DataLoader(graphed_data, BATCH_SIZE, False)
+    test_loader = DataLoader(graphed_test_data, BATCH_SIZE,False)
     
     # Initialize model
     model = CrystalGNN(
-        num_features=dataset.num_features,
+        num_features = graphed_data[0].num_features,
         hidden_channels=HIDDEN_CHANNELS,
-        out_channels=OUT_CHANNELS
     ).to(device)
     
     # Initialize optimizer and loss function
