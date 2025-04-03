@@ -61,7 +61,7 @@ def main():
     
     # Initialize model
     model = CrystalGNN(
-        num_features = graphed_data[0].num_features,
+        num_features = graphed_data[0][1].num_features,
         hidden_channels=HIDDEN_CHANNELS,
     ).to(device)
     
