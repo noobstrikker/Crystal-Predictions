@@ -44,7 +44,9 @@ def build_graph(
 
     # Optionally stores label
     if label is not None:
-        data.y = torch.tensor([label], dtype=torch.float)
+        if isinstance(label,str):
+            label = True if label == "True" else False
+        data.y = torch.tensor([float(label)], dtype=torch.float)
     
     return data
 
