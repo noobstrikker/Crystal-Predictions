@@ -1,10 +1,10 @@
 import torch
 from torch_geometric.data import DataLoader
 import torch.optim as optim
-from model import CrystalGNN
+from GNN.my_model import *
 import numpy as np
 from sklearn.model_selection import train_test_split
-from evaluation import evaluate_model_performance
+from GNN.evaluation import evaluate_model_performance
 
 
 def train_model(model, train_loader, optimizer, criterion, device):
@@ -28,7 +28,11 @@ def train_model(model, train_loader, optimizer, criterion, device):
         
         # Forward pass
         output = model(batch)
-        loss = criterion(output, batch.y.view(-1, 1))
+        
+        # For binary classification, y should be a class index (0 or 1)
+        # Convert from float to long and ensure it's a 1D tensor
+        target = batch.y.long().view(-1)
+        loss = criterion(output, target)
         
         # Backward pass
         loss.backward()
@@ -56,7 +60,8 @@ def evaluate_model(model, test_loader, criterion, device):
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            loss = criterion(output, batch.y.view(-1, 1))
+            target = batch.y.long().view(-1)  # Convert to 1D tensor of long integers
+            loss = criterion(output, target)
             total_loss += loss.item()
     
     return total_loss / len(test_loader)

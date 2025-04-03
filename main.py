@@ -3,8 +3,8 @@ from data_retrival import *
 from data_preprocessing import *
 from graph_builder import *
 from torch_geometric.data import DataLoader
-from GNN.my_model import CrystalGNN
-from GNN.train import train_model, evaluate_model, evaluate_model_performance
+from GNN.my_model import * 
+from GNN.train import *
 
 
 
