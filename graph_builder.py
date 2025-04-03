@@ -80,6 +80,6 @@ def build_graph_batch(
             data = build_graph(structure, label=None, cutoff=cutoff)
 
         results.append(data)
-    print(results)
+    
     
     return results

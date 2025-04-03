@@ -49,19 +49,20 @@ def main():
         #test_size=0.2, 
         #random_state=42
     #)
+    
     graphed_data = build_graph_batch(extract_label(train_dataset))
     graphed_test_data = build_graph_batch(extract_label(test_dataset))
 
     #
-
+    
     
     # Create data loaders
-    train_loader = DataLoader(graphed_data, BATCH_SIZE, False)
-    test_loader = DataLoader(graphed_test_data, BATCH_SIZE,False)
-    
+    train_loader = DataLoader(graphed_data, batch_size =BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(graphed_test_data, batch_size= BATCH_SIZE,)
+    print(graphed_data)
     # Initialize model
     model = CrystalGNN(
-        num_features = graphed_data[0][1].num_features,
+        num_features = graphed_data[0].num_features,
         hidden_channels=HIDDEN_CHANNELS,
     ).to(device)
     
