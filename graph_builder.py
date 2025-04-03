@@ -65,7 +65,6 @@ def build_graph_batch(
             # or item.get("is_metal") if that’s how you store it
             else:
                 label = item[2]
-            print(structure)
             data = build_graph(structure, label=label, cutoff=cutoff)
 
         # Case 2: tuple of (crystalproperites, structure)

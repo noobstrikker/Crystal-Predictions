@@ -56,7 +56,7 @@ def save_data_local(filename,data):
                 values.append(str(val) if val is not None else "None")
 
             structure_json = json.dumps(structure, cls=MontyEncoder)
-            file.write(", ".join(values) + f', "{structure_json}"\n')
+            file.write(", ".join(values) + f', {structure_json}\n')
 
 def load_data_local(filename, amount=None):
     filepath = f"DownloadedCrystalProperties/{filename}.txt"
@@ -70,7 +70,7 @@ def load_data_local(filename, amount=None):
             if amount is not None and i >= amount:
                 break
             try:
-                split_index = line.find(', "')
+                split_index = line.find(', {')
                 if split_index == -1:
                     continue
 
