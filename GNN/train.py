@@ -8,7 +8,6 @@ from GNN.evaluation import evaluate_model_performance
 
 
 def train_model(model, train_loader, optimizer, criterion, device):
-
     """
     Inputs:
         model: CrystalGNN - The neural network model to train
@@ -27,9 +26,10 @@ def train_model(model, train_loader, optimizer, criterion, device):
         optimizer.zero_grad()
         
         output = model(batch)
-
+        
         # Forward pass
-        target = batch.y.long().view(-1)
+        # Convert target to the right shape - it should be a tensor of class indices, not a 2D tensor
+        target = batch.y.squeeze().long()
         loss = criterion(output, target)
         
         # Backward pass
@@ -40,7 +40,6 @@ def train_model(model, train_loader, optimizer, criterion, device):
     return total_loss / len(train_loader)
 
 def evaluate_model(model, test_loader, criterion, device):
-    
     """
     Inputs:
         model: CrystalGNN - The neural network model to evaluate
@@ -51,14 +50,13 @@ def evaluate_model(model, test_loader, criterion, device):
     Returns:
         float: Average test loss
     """
-
     model.eval()
     total_loss = 0
     with torch.no_grad():
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            target = batch.y.long().view(-1)
+            target = batch.y.squeeze().long()
             loss = criterion(output, target)
             total_loss += loss.item()
     
