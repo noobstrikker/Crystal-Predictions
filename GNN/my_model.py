@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, global_mean_pool, global_add_pool
+from torch_geometric.nn import GCNConv, global_mean_pool, global_add_pool, TransformerConv
 from torch_geometric.nn import BatchNorm
 
 class CrystalGNN(nn.Module):
@@ -20,6 +20,7 @@ class CrystalGNN(nn.Module):
         self.bn2 = BatchNorm(hidden_channels)
         self.conv3 = GCNConv(hidden_channels, hidden_channels)
         self.bn3 = BatchNorm(hidden_channels)
+        self.attn = TransformerConv(hidden_channels, hidden_channels, heads=2, concat=False)
 
 
         self.fc1 = nn.Linear(hidden_channels*2, hidden_channels)  # 256 -> 128
@@ -58,6 +59,10 @@ class CrystalGNN(nn.Module):
         #Third layer
         x = self.conv3(x, edge_index)
         x = self.bn3(x)
+        x = F.relu(x)
+
+        #transformer layer
+        x = self.attn(x, edge_index)
         x = F.relu(x)
 
         #Pooling layer
