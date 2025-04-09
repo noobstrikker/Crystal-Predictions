@@ -1,130 +1,112 @@
 import torch
 import numpy as np
-from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.metrics import (accuracy_score, precision_score, recall_score,
+                           f1_score, roc_auc_score, confusion_matrix)
 import matplotlib.pyplot as plt
-from torch_geometric.data import DataLoader
+import seaborn as sns
+from sklearn.metrics import roc_curve, auc
 
-"""
-Maybe add some visualizations of the model. Supervisor suggested https://pymatgen.org/pymatgen.vis.html.
-Maybe use pymatgen.vis for visualizing the crystal structures.
-
-I think it requires a state dictionary of a trained NN to do.
-"""
-
-"""
-Will be changed a bit, when a model is trained, and we actually have a state dictionary for the best model.
-"""
-
-
-def evaluate_predictions(model, test_loader, device):
-    """
-    Inputs:
-        model: PyTorch GNN model to evaluate
-        test_loader: PyTorch Geometric DataLoader containing test data
-        device: torch.device for model computation
-
-    Returns:
-        tuple: (y_true, y_pred)
-            - y_true: numpy array of true values (binary labels)
-            - y_pred: numpy array of predicted values (binary predictions)
-    """
-    
+def evaluate_model(model, test_loader, device):
+    """Evaluate model on test data"""
     model.eval()
     y_true = []
     y_pred = []
+    y_probs = []
     
     with torch.no_grad():
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
             
-            # Get the predicted class (0 or 1) from log-softmax output
-            # By taking the argmax along dimension 1
-            pred_class = output.argmax(dim=1)
+            if isinstance(output, tuple):  # Handle multi-output models
+                output = output[0]  # Take classification output only
             
-            # Convert the target to the right format
-            target = batch.y.squeeze().long()
+            y_true.extend(batch.y.cpu().numpy())
+            y_pred.extend(output.argmax(dim=1).cpu().numpy())
+            y_probs.extend(torch.exp(output[:, 1]).cpu().numpy())
+    
+    return {
+        'y_true': y_true,
+        'y_pred': y_pred,
+        'y_probs': y_probs
+    }
+
+def calculate_metrics(y_true, y_pred, y_probs):
+    """Calculate classification metrics"""
+    return {
+        'accuracy': accuracy_score(y_true, y_pred),
+        'precision': precision_score(y_true, y_pred, zero_division=0),
+        'recall': recall_score(y_true, y_pred, zero_division=0),
+        'f1': f1_score(y_true, y_pred, zero_division=0),
+        'roc_auc': roc_auc_score(y_true, y_probs) if len(np.unique(y_true)) > 1 else float('nan'),
+        'confusion_matrix': confusion_matrix(y_true, y_pred)
+    }
+
+def plot_confusion_matrix(y_true, y_pred, save_path):
+    cm = confusion_matrix(y_true, y_pred)
+    plt.figure(figsize=(6,6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+               xticklabels=['Non-metal', 'Metal'],
+               yticklabels=['Non-metal', 'Metal'])
+    plt.title('Confusion Matrix')
+    plt.savefig(save_path)
+    plt.close()
+
+def plot_roc_curve(y_true, y_probs, save_path):
+    fpr, tpr, _ = roc_curve(y_true, y_probs)
+    roc_auc = auc(fpr, tpr)
+    
+    plt.figure(figsize=(6,6))
+    plt.plot(fpr, tpr, label=f'ROC curve (AUC = {roc_auc:.2f})')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curve')
+    plt.legend(loc="lower right")
+    plt.savefig(save_path)
+    plt.close()
+
+def evaluate_model_performance(model, test_loader, device, property_name='is_metal', save_plots=True):
+    """Complete model evaluation with metrics and plots"""
+    model.eval()
+    y_true = []
+    y_pred = []
+    y_probs = []
+    
+    with torch.no_grad():
+        for batch in test_loader:
+            batch = batch.to(device)
+            output = model(batch)
             
-            y_true.extend(target.cpu().numpy())
-            y_pred.extend(pred_class.cpu().numpy())
+            # Store predictions
+            y_true.extend(batch.y.cpu().numpy())
+            y_pred.extend(output.argmax(dim=1).cpu().numpy())
+            y_probs.extend(torch.exp(output[:, 1]).cpu().numpy())  # Probability of class 1
     
-    return np.array(y_true), np.array(y_pred)
-
-def calculate_metrics(y_true, y_pred):
-    """
-    Inputs:
-        y_true: numpy array of true values (binary labels)
-        y_pred: numpy array of predicted values (binary predictions)
-
-    Returns:
-        dict: Dictionary containing metrics:
-            - 'accuracy': Classification accuracy
-            - 'precision': Precision score
-            - 'recall': Recall score
-            - 'f1': F1 score
-    """
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-    
+    # Calculate metrics
     metrics = {
         'accuracy': accuracy_score(y_true, y_pred),
         'precision': precision_score(y_true, y_pred, zero_division=0),
         'recall': recall_score(y_true, y_pred, zero_division=0),
-        'f1': f1_score(y_true, y_pred, zero_division=0)
+        'f1': f1_score(y_true, y_pred, zero_division=0),
+        'roc_auc': roc_auc_score(y_true, y_probs) if len(np.unique(y_true)) > 1 else float('nan')
     }
-    return metrics
-
-def plot_predictions(y_true, y_pred, property_name='Property', save_path=None):
-    """
-    Inputs:
-        y_true: numpy array of true values (binary labels)
-        y_pred: numpy array of predicted values (binary predictions)
-        property_name: String name of the property being plotted
-        save_path: Optional path to save the plot. If None, plot is not saved
-
-    Returns:
-        None
-    """
-    from sklearn.metrics import confusion_matrix
-    import seaborn as sns
     
-    plt.figure(figsize=(8, 6))
-    cm = confusion_matrix(y_true, y_pred)
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.title(f'Confusion Matrix for {property_name}')
+    # Print results
+    print(f"\nFinal Model Performance ({property_name}):")
+    print(f"• Accuracy:  {metrics['accuracy']:.4f}")
+    print(f"• Precision: {metrics['precision']:.4f}")
+    print(f"• Recall:    {metrics['recall']:.4f}") 
+    print(f"• F1 Score:  {metrics['f1']:.4f}")
+    print(f"• ROC AUC:   {metrics['roc_auc']:.4f}")
     
-    if save_path:
-        plt.savefig(save_path)
-    plt.close()
-
-def evaluate_model_performance(model, test_loader, device, property_name='Property', save_plots=True):
-    """
-    Inputs:
-        model: PyTorch GNN model to evaluate
-        test_loader: PyTorch Geometric DataLoader containing test data
-        device: torch.device for model computation
-        property_name: String name of the property being predicted
-        save_plots: Boolean flag for saving prediction plots
-
-    Returns:
-        dict: Dictionary containing classification metrics
-    """
-    # Get predictions
-    y_true, y_pred = evaluate_predictions(model, test_loader, device)
-    
-    # Calculate metrics
-    metrics = calculate_metrics(y_true, y_pred)
-    
-    # Print metrics
-    print(f"\nModel Performance Metrics for {property_name}:")
-    print(f"Accuracy: {metrics['accuracy']:.4f}")
-    print(f"Precision: {metrics['precision']:.4f}")
-    print(f"Recall: {metrics['recall']:.4f}")
-    print(f"F1 Score: {metrics['f1']:.4f}")
-    
-    # Create plots
+    # Generate plots
     if save_plots:
-        plot_predictions(y_true, y_pred, property_name, f'confusion_matrix_{property_name}.png')
+        plot_confusion_matrix(y_true, y_pred, f'confusion_matrix_{property_name}.png')
+        plot_roc_curve(y_true, y_probs, f'roc_curve_{property_name}.png')
+    
+    return metrics
     
     return metrics

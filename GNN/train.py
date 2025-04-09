@@ -1,63 +1,41 @@
 import torch
-from torch_geometric.data import DataLoader
 import torch.optim as optim
-from GNN.my_model import *
-import numpy as np
-from sklearn.model_selection import train_test_split
-from GNN.evaluation import evaluate_model_performance
-
+from torch_geometric.loader import DataLoader
 
 def train_model(model, train_loader, optimizer, criterion, device):
-    """
-    Inputs:
-        model: CrystalGNN - The neural network model to train
-        train_loader: DataLoader - PyTorch geometric dataloader containing training data
-        optimizer: torch.optim - The optimizer for updating model parameters
-        criterion: torch.nn - The loss function
-        device: torch.device - The device (CPU/GPU) to run training on
-    
-    Returns:
-        float: Average training loss for the epoch
-    """
     model.train()
     total_loss = 0
+    
     for batch in train_loader:
+        # Verify batch has targets
+        if batch.y is None:
+            raise ValueError("Batch is missing target labels (batch.y is None)")
+        
         batch = batch.to(device)
         optimizer.zero_grad()
         
         output = model(batch)
+        loss = criterion(output, batch.y.squeeze().long())
         
-        # Forward pass
-        # Convert target to the right shape - it should be a tensor of class indices, not a 2D tensor
-        target = batch.y.squeeze().long()
-        loss = criterion(output, target)
-        
-        # Backward pass
         loss.backward()
         optimizer.step()
         total_loss += loss.item()
     
     return total_loss / len(train_loader)
 
-def evaluate_model(model, test_loader, criterion, device):
-    """
-    Inputs:
-        model: CrystalGNN - The neural network model to evaluate
-        test_loader: DataLoader - PyTorch geometric dataloader containing test data
-        criterion: torch.nn - The loss function
-        device: torch.device - The device (CPU/GPU) to run evaluation on
-    
-    Returns:
-        float: Average test loss
-    """
+def evaluate_loss_model(model, test_loader, criterion, device):
+    """Evaluate model on test data"""
     model.eval()
     total_loss = 0
+    
     with torch.no_grad():
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            target = batch.y.squeeze().long()
-            loss = criterion(output, target)
+            if isinstance(output, tuple):  # Handle multi-output models
+                output = output[0]  # Use classification output only
+            
+            loss = criterion(output, batch.y.squeeze().long())
             total_loss += loss.item()
     
     return total_loss / len(test_loader)

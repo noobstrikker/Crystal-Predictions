@@ -4,41 +4,32 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv
 from torch_geometric.nn import global_mean_pool
 
-class CrystalGNN(nn.Module):
-    """
-    Inputs:
-        num_features (int): Number of input features per node
-        hidden_channels (int, optional): Number of hidden channels. Defaults to 64
-    """
-    def __init__(self, num_features, hidden_channels=64):
-        super(CrystalGNN, self).__init__()
-        self.conv = GCNConv(num_features, hidden_channels)
+class CrystalGNN(torch.nn.Module):
+    def __init__(self, num_features, hidden_channels, global_feature_size=2):
+        super().__init__()
+        self.conv1 = GCNConv(num_features, hidden_channels)
         self.conv2 = GCNConv(hidden_channels, hidden_channels)
-
-        #Connected layers
-        self.fc = nn.Linear(hidden_channels, 2)  
         
-    def forward(self, batch):
-        """
-        Inputs:
-            x (torch.Tensor): Node feature matrix [num_nodes, num_features]
-            edge_index (torch.Tensor): Graph connectivity in COO format [2, num_edges]
-                where each column is [source_node, target_node]
-            batch: Node to graph assignment [num_nodes]
-
-        Returns:
-            torch.Tensor: Log-softmax probabilities for binary classification [batch_size, 2]
-        """
-
-        x, edge_index, batch_idx = batch.x, batch.edge_index, batch.batch
-
-        x = self.conv(x, edge_index)
-        x = F.relu(x)
-        x = F.dropout(x, p=0.5, training=self.training)
+        # Additional layers for global features
+        self.global_processor = torch.nn.Linear(global_feature_size, hidden_channels)
         
-        # Pooling layer
-        x = global_mean_pool(x, batch_idx)
+        # Final classifier
+        self.classifier = torch.nn.Linear(hidden_channels * 2, 2)  # *2 for concatenation
+
+    def forward(self, data):
+        x, edge_index, batch = data.x, data.edge_index, data.batch
         
-        # Classification
-        x = self.fc(x)
-        return F.log_softmax(x, dim=1)
+        # Process local structure
+        x = self.conv1(x, edge_index).relu()
+        x = self.conv2(x, edge_index)
+        
+        # Global pooling
+        x_global = global_mean_pool(x, batch)
+        
+        # Process global features if they exist
+        if hasattr(data, 'global_features') and data.global_features is not None:
+            gf = self.global_processor(data.global_features)
+            x_global = torch.cat([x_global, gf], dim=1)
+        
+        # Final classification
+        return self.classifier(x_global)
