@@ -29,7 +29,7 @@ def main():
     
     # Hyperparameters
     BATCH_SIZE = 32
-    EPOCHS = 100
+    EPOCHS = 10
     LEARNING_RATE = 0.001
     HIDDEN_CHANNELS = 64
     OUT_CHANNELS = 32
