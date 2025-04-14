@@ -2,9 +2,10 @@ import torch
 from data_retrival import *
 from data_preprocessing import *
 from graph_builder import *
-from torch_geometric.data import DataLoader
+from torch_geometric.loader import DataLoader
 from GNN.my_model import * 
 from GNN.train import *
+from GNN.evaluation import *
 
 
 
@@ -28,7 +29,7 @@ def main():
     
     # Hyperparameters
     BATCH_SIZE = 32
-    EPOCHS = 100
+    EPOCHS = 10
     LEARNING_RATE = 0.001
     HIDDEN_CHANNELS = 64
     OUT_CHANNELS = 32
@@ -64,7 +65,7 @@ def main():
     # Initialize model
     model = CrystalGNN(
         num_features = graphed_data[0].num_features,
-        hidden_channels=HIDDEN_CHANNELS,
+        hidden_channels=HIDDEN_CHANNELS
     ).to(device)
     
     # Initialize optimizer and loss function
@@ -75,8 +76,8 @@ def main():
     best_test_loss = float('inf')
     for epoch in range(EPOCHS):
         train_loss = train_model(model, train_loader, optimizer, criterion, device)
-        test_loss = evaluate_model(model, test_loader, criterion, device)
-        val_loss = evaluate_model(model, val_loader, criterion, device)
+        test_loss = evaluate_loss_model(model, test_loader, criterion, device)
+        val_loss = evaluate_loss_model(model, val_loader, criterion, device)
         
         # Save best model
         if test_loss < best_test_loss:
@@ -87,6 +88,7 @@ def main():
             print(f'Epoch: {epoch+1:03d}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}, Validation Loss: {val_loss:.4f}')
 
      # Evaluation of model performance (after training)
-    metrics = evaluate_model_performance(model, test_loader, device, property_name='Target Property')
+    metrics = evaluate_model_performance(model, test_loader, device, property_name='is_metal')
+    
 if __name__ == '__main__':
     main()

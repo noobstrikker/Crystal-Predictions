@@ -1,3 +1,8 @@
 DownloadedCrystalProperties/*
 __pycache__/*
 test.py
+GNN/__pycache__/*
+best_model.pth
+confusion_matrix_Target Property.png
+confusion_matrix_is_metal.png
+roc_curve_is_metal.png
