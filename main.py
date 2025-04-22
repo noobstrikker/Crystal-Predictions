@@ -22,6 +22,8 @@ from GNN.train import (
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
 CFG_PATH = ROOT_DIR / "config_defaults.json"
+MODELS_DIR = ROOT_DIR / "trained_models"
+
 
 FALLBACK_DEFAULTS: dict[str, Any] = {
     "output": "best_model.pth",
@@ -83,6 +85,8 @@ def parse_args(datasets: list[str], defaults: dict[str, Any]) -> argparse.Namesp
 
 
 def main() -> None:
+    print("CrystalGNN Training Script starting...")
+    print("Loading defaults...")
     if not DATASET_DIR.exists():
         sys.exit(f"ERROR: dataset directory not found: {DATASET_DIR}")
     available = sorted(p.stem if p.is_file() else p.name for p in DATASET_DIR.iterdir())
@@ -119,9 +123,10 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
+    print(f"Loading dataset: {args.dataset}...")
     dataset = load_data_local(args.dataset)
     train_set, val_set, test_set = split_data(dataset)
-
+    print(f"Train set: {len(train_set)} | Validation set: {len(val_set)} | Test set: {len(test_set)}")
     train_graphs = build_graph_batch(extract_label(train_set))
     val_graphs = build_graph_batch(extract_label(val_set))
     test_graphs = build_graph_batch(extract_label(test_set))
@@ -129,6 +134,10 @@ def main() -> None:
     train_loader = DataLoader(train_graphs, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_graphs, batch_size=args.batch_size)
     test_loader = DataLoader(test_graphs, batch_size=args.batch_size)
+
+
+    Models_path = (MODELS_DIR / args.output).resolve()
+    Models_path.parent.mkdir(parents=True, exist_ok=True)
 
     model = CrystalGNN(
         num_features=train_graphs[0].num_features,
@@ -143,12 +152,12 @@ def main() -> None:
         v_loss = evaluate_model(model, val_loader, criterion, device)
         if v_loss < best_val:
             best_val = v_loss
-            torch.save(model.state_dict(), args.output)
-            print(f"★ Saved new best model → {args.output}")
+            torch.save(model.state_dict(), Models_path)
+            print(f"★ Saved new best model → {Models_path}")
         print(f"E{epoch:03d} | train {tr_loss:.4f} | val {v_loss:.4f}")
 
     # Final test
-    model.load_state_dict(torch.load(args.output))
+    model.load_state_dict(torch.load(Models_path))
     t_loss = evaluate_model(model, test_loader, criterion, device)
     print(f"\nBest model {args.output} | test loss: {t_loss:.4f}")
 
