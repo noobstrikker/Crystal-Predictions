@@ -154,8 +154,7 @@ def action_infer() -> None:
     dataset_name = ask_choice("Choose dataset", datasets)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     raw_data = load_data_local(dataset_name)
-    _, _, test_set = split_data(raw_data)
-    test_graphs = build_graph_batch(extract_label(test_set))
+    test_graphs = build_graph_batch(extract_label(raw_data))
     test_loader = DataLoader(test_graphs, batch_size=64)
     sample_graph = test_graphs[0]
     model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=64).to(device)
