@@ -1,64 +1,36 @@
-from itertools import islice
-import os
-from typing import List, Tuple
-
+from crystalclass import crystal
 from mp_api.client import MPRester
-from pymatgen.core import Structure
-from mp_api.client.routes.materials.summary import SummaryDoc
+from monty.json import MontyEncoder, MontyDecoder
+import json
+import os
 
 #ik abuse min key :)
 API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 #size is the amount of crystals we wanted to importet
-def get_materials_data(size: int) -> List[Tuple[SummaryDoc, Structure]]:
-    """Stream *exactly* ``size`` materials and their relaxed structures.
-
-    This function keeps the same input → output contract as the original
-    implementation while removing the 10 000‑document per‑request limit. It
-    uses the ``mp_api`` client's built‑in pagination (>= v0.40), so it works
-    for any *size* up to the full Materials Project corpus (~340 k in 2025).
-
-    Parameters
-    ----------
-    size
-        Total number of materials to return.
-
-    Returns
-    -------
-    list[tuple[SummaryDoc, Structure]]
-        A list containing ``(summary_doc, structure)`` tuples.
-    """
-    requested_fields = [
-        "material_id", "band_gap", "cbm", "density", "density_atomic",
-        "dos_energy_down", "dos_energy_up", "e_electronic", "e_ij_max",
-        "e_ionic", "e_total", "efermi", "energy_above_hull",
-        "energy_per_atom", "equilibrium_reaction_energy_per_atom",
-        "formation_energy_per_atom", "homogeneous_poisson", "n",
-        "shape_factor", "surface_anisotropy", "total_magnetization",
-        "total_magnetization_normalized_formula_units",
-        "total_magnetization_normalized_vol",
-        "uncorrected_energy_per_atom", "universal_anisotropy", "vbm",
-        "volume", "weighted_surface_energy",
-        "weighted_surface_energy_EV_PER_ANG2", "weighted_work_function",
-        "is_metal",
-    ]
-
-    results: List[Tuple[SummaryDoc, Structure]] = []
-
+def get_materials_data(size):
     with MPRester(API_KEY) as mpr:
-        # 1️⃣ Grab an *iterator* over all summary docs; the client paginates
-        docs = mpr.materials.summary.search(fields=requested_fields)
+        # Get summaries
+        summaries = list(mpr.materials.summary.search(
+            fields = ["material_id","band_gap", "cbm", "density", "density_atomic", "dos_energy_down", "dos_energy_up", "e_electronic",
+                    "e_ij_max", "e_ionic", "e_total", "efermi", "energy_above_hull", "energy_per_atom", "equilibrium_reaction_energy_per_atom",
+                    "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
+                    "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
+                    "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
+                    "weighted_work_function","is_metal"],
+            chunk_size=size,
+            num_chunks=1
+        ))[:size]
 
-        # 2️⃣ Pull only the first ``size`` docs without blowing past 10 k/request
-        for summary in islice(docs, size):
+        results = []
+        for summary in summaries:
             try:
                 structure = mpr.get_structure_by_material_id(summary.material_id)
-            except Exception as err:
-                print(f"[WARN] Skipping {summary.material_id}: {err}")
+                results.append((summary, structure))
+            except Exception as e:
+                print(f"Failed to get structure for {summary.material_id}: {e}")
                 continue
-            results.append((summary, structure))
-
-    return results
+        return results
 
 #filename is what it is called if we want differnt file thingymabobs to have fun with, we always get the meterials varible from get_materails_data()   
 def save_data_local(filename,data):
