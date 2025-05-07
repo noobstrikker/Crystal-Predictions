@@ -63,8 +63,14 @@ def load_data_local(filename, amount=None):
     data = []
 
     with open(filepath, "r") as file:
-        #Skips header
-        next(file)
+        # Skip header
+        header = next(file).strip().split(", ")
+        
+        # Find indices of required fields
+        material_id_idx = header.index("material_id")
+        density_idx = header.index("density")
+        is_metal_idx = header.index("is_metal")
+        structure_idx = len(header) - 1  # Try to get structure.json from last column
 
         for i, line in enumerate(file):
             if amount is not None and i >= amount:
@@ -75,10 +81,9 @@ def load_data_local(filename, amount=None):
                     continue
 
                 crystal_part = line[:split_index]
-                json_part = line[split_index +2:].strip()
+                json_part = line[split_index + 2:].strip()
 
-                json_part = json_part.rstrip('"').strip()
-
+                # Parse structure
                 try:
                     structure = json.loads(json_part, cls=MontyDecoder)
                 except json.JSONDecodeError:
@@ -87,25 +92,24 @@ def load_data_local(filename, amount=None):
                     except:
                         json_part = json_part.replace('"', '\\"')
                         structure = json.loads(f'"{json_part}"', cls=MontyDecoder)
+
+                # Parse crystal data
                 crystal_data = crystal_part.split(", ")
-                converted = []
-                for val in crystal_data:
-                    if val == "None":
-                        converted.append("Null")
-                    elif val.replace('.','',1).replace('-','',1).isdigit():
-                        if 'e' in val.lower():
-                            converted.append(float(val))
-                        else:
-                            if float(val).is_integer():
-                                converted.append(int(float(val)))
-                            else:
-                                converted.append(float(val))
-                    else:
-                        converted.append(val)
+                
+                # Extract only the required fields
+                material_id = crystal_data[material_id_idx]
+                density = float(crystal_data[density_idx]) if crystal_data[density_idx] != "None" else None
+                is_metal = crystal_data[is_metal_idx].lower() == "true" if crystal_data[is_metal_idx] != "None" else None
 
-                crystal_obj = crystal(*converted)
+                # Create crystal object with only required fields
+                crystal_obj = crystal(
+                    material_id=material_id,
+                    structure=structure,
+                    density=density,
+                    is_metal=is_metal
+                )
 
-                data.append((crystal_obj, structure))
+                data.append(crystal_obj)
 
             except Exception as e:
                 print(f"Error loading line {i+1}: {str(e)}")

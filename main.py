@@ -50,26 +50,29 @@ def main():
         #random_state=42
     #)
     
-    graphed_data = build_graph_batch(extract_label(train_dataset))
-    graphed_test_data = build_graph_batch(extract_label(test_dataset))
-    graphed_val_data = build_graph_batch(extract_label(val_dataset))
+    graphed_data = build_graph_batch((train_dataset))
+    graphed_test_data = build_graph_batch((test_dataset))
+    graphed_val_data = build_graph_batch((val_dataset))
 
     #
     
     
     # Create data loaders
     train_loader = DataLoader(graphed_data, batch_size =BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(graphed_test_data, batch_size= BATCH_SIZE,)
-    val_loader = DataLoader(graphed_val_data, batch_size= BATCH_SIZE,)
+    test_loader = DataLoader(graphed_test_data, batch_size= BATCH_SIZE)
+    val_loader = DataLoader(graphed_val_data, batch_size= BATCH_SIZE)
+
+    num_features = graphed_data[0].x.size(1)
+
     # Initialize model
     model = CrystalGNN(
-        num_features = graphed_data[0].num_features,
+        num_features = num_features,
         hidden_channels=HIDDEN_CHANNELS,
     ).to(device)
     
     # Initialize optimizer and loss function
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     
     # Training loop
     best_test_loss = float('inf')
@@ -87,6 +90,6 @@ def main():
             print(f'Epoch: {epoch+1:03d}, Train Loss: {train_loss:.4f}, Test Loss: {test_loss:.4f}, Validation Loss: {val_loss:.4f}')
 
      # Evaluation of model performance (after training)
-    metrics = evaluate_model_performance(model, test_loader, device, property_name='Target Property')
+    metrics = evaluate_model_performance(model, test_loader, device)
 if __name__ == '__main__':
     main()

@@ -18,17 +18,16 @@ Will be changed a bit, when a model is trained, and we actually have a state dic
 
 def evaluate_predictions(model, test_loader, device):
     """
-    Inputs:
-        model: PyTorch GNN model to evaluate
-        test_loader: PyTorch Geometric DataLoader containing test data
-        device: torch.device for model computation
-
-    Returns:
-        tuple: (y_true, y_pred)
-            - y_true: numpy array of true values (binary labels)
-            - y_pred: numpy array of predicted values (binary predictions)
-    """
+    Get predictions and true labels from the model
     
+    Args:
+        model: The trained model
+        test_loader: DataLoader containing test data
+        device: Device to run evaluation on
+        
+    Returns:
+        tuple: (y_true, y_pred) where both are numpy arrays
+    """
     model.eval()
     y_true = []
     y_pred = []
@@ -38,15 +37,11 @@ def evaluate_predictions(model, test_loader, device):
             batch = batch.to(device)
             output = model(batch)
             
-            # Get the predicted class (0 or 1) from log-softmax output
-            # By taking the argmax along dimension 1
-            pred_class = output.argmax(dim=1)
+            # Convert logits to binary predictions
+            pred = (output > 0).float()
             
-            # Convert the target to the right format
-            target = batch.y.squeeze().long()
-            
-            y_true.extend(target.cpu().numpy())
-            y_pred.extend(pred_class.cpu().numpy())
+            y_true.extend(batch.y.cpu().numpy())
+            y_pred.extend(pred.cpu().numpy())
     
     return np.array(y_true), np.array(y_pred)
 
@@ -98,33 +93,37 @@ def plot_predictions(y_true, y_pred, property_name='Property', save_path=None):
         plt.savefig(save_path)
     plt.close()
 
-def evaluate_model_performance(model, test_loader, device, property_name='Property', save_plots=True):
+def evaluate_model_performance(model, test_loader, device):
     """
-    Inputs:
-        model: PyTorch GNN model to evaluate
-        test_loader: PyTorch Geometric DataLoader containing test data
-        device: torch.device for model computation
-        property_name: String name of the property being predicted
-        save_plots: Boolean flag for saving prediction plots
-
+    Evaluate model performance using various metrics
+    
+    Args:
+        model: The trained model
+        test_loader: DataLoader containing test data
+        device: Device to run evaluation on
+        
     Returns:
-        dict: Dictionary containing classification metrics
+        dict: Dictionary containing various performance metrics
     """
-    # Get predictions
     y_true, y_pred = evaluate_predictions(model, test_loader, device)
     
     # Calculate metrics
-    metrics = calculate_metrics(y_true, y_pred)
+    accuracy = np.mean(y_true == y_pred)
+    precision = np.sum((y_true == 1) & (y_pred == 1)) / (np.sum(y_pred == 1) + 1e-10)
+    recall = np.sum((y_true == 1) & (y_pred == 1)) / (np.sum(y_true == 1) + 1e-10)
+    f1 = 2 * (precision * recall) / (precision + recall + 1e-10)
     
-    # Print metrics
-    print(f"\nModel Performance Metrics for {property_name}:")
-    print(f"Accuracy: {metrics['accuracy']:.4f}")
-    print(f"Precision: {metrics['precision']:.4f}")
-    print(f"Recall: {metrics['recall']:.4f}")
-    print(f"F1 Score: {metrics['f1']:.4f}")
+    metrics = {
+        'accuracy': accuracy,
+        'precision': precision,
+        'recall': recall,
+        'f1_score': f1
+    }
     
-    # Create plots
-    if save_plots:
-        plot_predictions(y_true, y_pred, property_name, f'confusion_matrix_{property_name}.png')
+    print("\nModel Performance Metrics:")
+    print(f"Accuracy: {accuracy:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print(f"F1 Score: {f1:.4f}")
     
     return metrics

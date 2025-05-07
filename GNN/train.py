@@ -29,7 +29,7 @@ def train_model(model, train_loader, optimizer, criterion, device):
         
         # Forward pass
         # Convert target to the right shape - it should be a tensor of class indices, not a 2D tensor
-        target = batch.y.squeeze().long()
+        target = batch.y.squeeze().float()
         loss = criterion(output, target)
         
         # Backward pass
@@ -56,7 +56,7 @@ def evaluate_model(model, test_loader, criterion, device):
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            target = batch.y.squeeze().long()
+            target = batch.y.squeeze().float()
             loss = criterion(output, target)
             total_loss += loss.item()
     
