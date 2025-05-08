@@ -13,6 +13,7 @@ from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
 from GNN.train import train_model, evaluate_model, evaluate_model_performance
+from utils import EarlyStopper
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
@@ -25,6 +26,7 @@ FALLBACK_DEFAULTS: dict[str, Any] = {
     "epochs": 100,
     "lr": 0.001,
     "hidden_channels": 64,
+    "patience": 15,
 }
 
 def load_defaults() -> dict[str, Any]:
@@ -85,6 +87,7 @@ def parse_train_args(datasets: List[str], defaults: dict[str, Any]) -> argparse.
     p.add_argument("--epochs", type=int, default=defaults["epochs"])
     p.add_argument("--lr", type=float, default=defaults["lr"])
     p.add_argument("--hidden_channels", type=int, default=defaults["hidden_channels"])
+    p.add_argument("--patience",type=int,default=defaults["patience"])
     return p.parse_args([])
 
 def action_train() -> None:
@@ -105,6 +108,7 @@ def action_train() -> None:
         args.epochs = ask_value("Epochs", args.epochs, int)
         args.lr = ask_value("Learning rate", args.lr, float)
         args.hidden_channels = ask_value("Hidden channels", args.hidden_channels, int)
+        args.patience = ask_value("patience (early-stop epochs)", args.patience, int)
     if input("Save these values as new defaults? (y/N): ").strip().lower() == "y":
         save_defaults(vars(args))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -121,15 +125,24 @@ def action_train() -> None:
     model = CrystalGNN(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
     optimiser = optim.Adam(model.parameters(), lr=args.lr)
     criterion = torch.nn.CrossEntropyLoss()
+    patience = 15
+    early_stopper =EarlyStopper(patience=args.patience, delta=1e-4)
     best_val = float("inf")
     for epoch in range(1, args.epochs + 1):
         tr_loss = train_model(model, train_loader, optimiser, criterion, device)
         v_loss = evaluate_model(model, val_loader, criterion, device)
+
         if v_loss < best_val:
             best_val = v_loss
             torch.save(model.state_dict(), model_path)
             print(f"Saved new best model → {model_path}")
+
         print(f"E{epoch:03d}  train {tr_loss:.4f}  val {v_loss:.4f}")
+
+        if early_stopper(v_loss):
+            print(f"⏹  Early-stopping triggered (no val-loss improve for {args.patience} epochs)")
+            break
+
     model.load_state_dict(torch.load(model_path))
     t_loss = evaluate_model(model, test_loader, criterion, device)
     print(f"Test loss: {t_loss:.4f}")
