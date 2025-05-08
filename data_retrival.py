@@ -3,34 +3,47 @@ from mp_api.client import MPRester
 from monty.json import MontyEncoder, MontyDecoder
 import json
 import os
+from itertools import islice
 
 #ik abuse min key :)
 API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 #size is the amount of crystals we wanted to importet
 def get_materials_data(size):
-    with MPRester(API_KEY) as mpr:
-        # Get summaries
-        summaries = list(mpr.materials.summary.search(
-            fields = ["material_id","band_gap", "cbm", "density", "density_atomic", "dos_energy_down", "dos_energy_up", "e_electronic",
-                    "e_ij_max", "e_ionic", "e_total", "efermi", "energy_above_hull", "energy_per_atom", "equilibrium_reaction_energy_per_atom",
-                    "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
-                    "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
-                    "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
-                    "weighted_work_function","is_metal"],
-            chunk_size=size,
-            num_chunks=1
-        ))[:size]
+    """
+    Return *size* (summary, structure) tuples.
 
-        results = []
-        for summary in summaries:
+    * Uses mp_api ≥ 0.40 auto‑pagination, so it never asks the server
+      for >10 000 docs in one request.
+    * Keeps memory low by streaming.
+    * No other parts of data_retrival.py have to change.
+    """
+    requested_fields = [
+        "material_id","band_gap","cbm","density","density_atomic",
+        "dos_energy_down","dos_energy_up","e_electronic","e_ij_max",
+        "e_ionic","e_total","efermi","energy_above_hull","energy_per_atom",
+        "equilibrium_reaction_energy_per_atom","formation_energy_per_atom",
+        "homogeneous_poisson","n","shape_factor","surface_anisotropy",
+        "total_magnetization","total_magnetization_normalized_formula_units",
+        "total_magnetization_normalized_vol","uncorrected_energy_per_atom",
+        "universal_anisotropy","vbm","volume","weighted_surface_energy",
+        "weighted_surface_energy_EV_PER_ANG2","weighted_work_function",
+        "is_metal",
+    ]
+
+    results = []
+    with MPRester(API_KEY) as mpr:
+        # iterator that paginates under the hood (10 k/request max)
+        docs = mpr.materials.summary.search(fields=requested_fields)
+
+        for summary in islice(docs, size):          # pull exactly `size`
             try:
                 structure = mpr.get_structure_by_material_id(summary.material_id)
                 results.append((summary, structure))
-            except Exception as e:
-                print(f"Failed to get structure for {summary.material_id}: {e}")
-                continue
-        return results
+            except Exception as err:
+                print(f"[WARN] skipping {summary.material_id}: {err}")
+
+    return results
 
 #filename is what it is called if we want differnt file thingymabobs to have fun with, we always get the meterials varible from get_materails_data()   
 def save_data_local(filename,data):
