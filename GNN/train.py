@@ -26,10 +26,10 @@ def train_model(model, train_loader, optimizer, criterion, device):
         optimizer.zero_grad()
         
         output = model(batch)
+        # Ensure output and target are both float tensors with correct shapes
+        output = output.float().view(-1)  # Shape: [batch_size]
+        target = batch.y.float().view(-1)  # Shape: [batch_size]
         
-        # Forward pass
-        # Convert target to the right shape - it should be a tensor of class indices, not a 2D tensor
-        target = batch.y.squeeze().long()
         loss = criterion(output, target)
         
         # Backward pass
@@ -56,7 +56,10 @@ def evaluate_model(model, test_loader, criterion, device):
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            target = batch.y.squeeze().long()
+            # Ensure output and target are both float tensors with correct shapes
+            output = output.float().view(-1)  # Shape: [batch_size]
+            target = batch.y.float().view(-1)  # Shape: [batch_size]
+            
             loss = criterion(output, target)
             total_loss += loss.item()
     

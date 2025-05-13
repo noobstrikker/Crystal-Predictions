@@ -28,18 +28,25 @@ def build_graph(
     x = torch.tensor(atomic_numbers, dtype=torch.float).view(-1, 1)
 
     
-    # 2) Determine edges (neighbors within cutoff)
+    # 2) Get lattice features (3x3 matrix flattened to 9 values)
+    # Reshape to (1, 9) to ensure proper batching
+    lattice_matrix = structure.lattice.matrix
+    lattice_features = torch.tensor(lattice_matrix.flatten(), dtype=torch.float).view(1, 9)
+
+    
+    # 3) Determine edges (neighbors within cutoff)
     #    i_indices and j_indices are the site indices, distances is the site distance
     i_indices, j_indices, images, distances = structure.get_neighbor_list(r=cutoff)
     edge_index = torch.tensor([i_indices, j_indices], dtype=torch.long)
     edge_attr = torch.tensor(distances, dtype=torch.float).view(-1, 1)
 
    
-    # 3) Create the Data object
+    # 4) Create the Data object
     data = Data(
         x=x,                    # Node features
         edge_index=edge_index,  # Graph connectivity
-        edge_attr=edge_attr     # Distances
+        edge_attr=edge_attr,    # Distances
+        lattice_features=lattice_features  # Add lattice features with shape (1, 9)
     )
 
     # Optionally stores label
@@ -64,7 +71,7 @@ def build_graph_batch(
             # handle label if present
             if label_key in item:
                 label = item[2]
-            # or item.get("is_metal") if that’s how you store it
+            # or item.get("is_metal") if that's how you store it
             else:
                 label = item[2]
             data = build_graph(structure, label=label, cutoff=cutoff)

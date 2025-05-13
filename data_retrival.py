@@ -3,47 +3,34 @@ from mp_api.client import MPRester
 from monty.json import MontyEncoder, MontyDecoder
 import json
 import os
-from itertools import islice
 
 #ik abuse min key :)
 API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 #size is the amount of crystals we wanted to importet
 def get_materials_data(size):
-    """
-    Return *size* (summary, structure) tuples.
-
-    * Uses mp_api ≥ 0.40 auto‑pagination, so it never asks the server
-      for >10 000 docs in one request.
-    * Keeps memory low by streaming.
-    * No other parts of data_retrival.py have to change.
-    """
-    requested_fields = [
-        "material_id","band_gap","cbm","density","density_atomic",
-        "dos_energy_down","dos_energy_up","e_electronic","e_ij_max",
-        "e_ionic","e_total","efermi","energy_above_hull","energy_per_atom",
-        "equilibrium_reaction_energy_per_atom","formation_energy_per_atom",
-        "homogeneous_poisson","n","shape_factor","surface_anisotropy",
-        "total_magnetization","total_magnetization_normalized_formula_units",
-        "total_magnetization_normalized_vol","uncorrected_energy_per_atom",
-        "universal_anisotropy","vbm","volume","weighted_surface_energy",
-        "weighted_surface_energy_EV_PER_ANG2","weighted_work_function",
-        "is_metal",
-    ]
-
-    results = []
     with MPRester(API_KEY) as mpr:
-        # iterator that paginates under the hood (10 k/request max)
-        docs = mpr.materials.summary.search(fields=requested_fields)
+        # Get summaries
+        summaries = list(mpr.materials.summary.search(
+            fields = ["material_id","band_gap", "cbm", "density", "density_atomic", "dos_energy_down", "dos_energy_up", "e_electronic",
+                    "e_ij_max", "e_ionic", "e_total", "efermi", "energy_above_hull", "energy_per_atom", "equilibrium_reaction_energy_per_atom",
+                    "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
+                    "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
+                    "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
+                    "weighted_work_function","is_metal"],
+            chunk_size=size,
+            num_chunks=1
+        ))[:size]
 
-        for summary in islice(docs, size):          # pull exactly `size`
+        results = []
+        for summary in summaries:
             try:
                 structure = mpr.get_structure_by_material_id(summary.material_id)
                 results.append((summary, structure))
-            except Exception as err:
-                print(f"[WARN] skipping {summary.material_id}: {err}")
-
-    return results
+            except Exception as e:
+                print(f"Failed to get structure for {summary.material_id}: {e}")
+                continue
+        return results
 
 #filename is what it is called if we want differnt file thingymabobs to have fun with, we always get the meterials varible from get_materails_data()   
 def save_data_local(filename,data):
@@ -76,8 +63,14 @@ def load_data_local(filename, amount=None):
     data = []
 
     with open(filepath, "r") as file:
-        #Skips header
-        next(file)
+        # Skip header
+        header = next(file).strip().split(", ")
+        
+        # Find indices of required fields
+        material_id_idx = header.index("material_id")
+        density_idx = header.index("density")
+        is_metal_idx = header.index("is_metal")
+        structure_idx = len(header) - 1  # Try to get structure.json from last column
 
         for i, line in enumerate(file):
             if amount is not None and i >= amount:
@@ -88,10 +81,9 @@ def load_data_local(filename, amount=None):
                     continue
 
                 crystal_part = line[:split_index]
-                json_part = line[split_index +2:].strip()
+                json_part = line[split_index + 2:].strip()
 
-                json_part = json_part.rstrip('"').strip()
-
+                # Parse structure
                 try:
                     structure = json.loads(json_part, cls=MontyDecoder)
                 except json.JSONDecodeError:
@@ -100,25 +92,24 @@ def load_data_local(filename, amount=None):
                     except:
                         json_part = json_part.replace('"', '\\"')
                         structure = json.loads(f'"{json_part}"', cls=MontyDecoder)
+
+                # Parse crystal data
                 crystal_data = crystal_part.split(", ")
-                converted = []
-                for val in crystal_data:
-                    if val == "None":
-                        converted.append("Null")
-                    elif val.replace('.','',1).replace('-','',1).isdigit():
-                        if 'e' in val.lower():
-                            converted.append(float(val))
-                        else:
-                            if float(val).is_integer():
-                                converted.append(int(float(val)))
-                            else:
-                                converted.append(float(val))
-                    else:
-                        converted.append(val)
+                
+                # Extract only the required fields
+                material_id = crystal_data[material_id_idx]
+                density = float(crystal_data[density_idx]) if crystal_data[density_idx] != "None" else None
+                is_metal = crystal_data[is_metal_idx].lower() == "true" if crystal_data[is_metal_idx] != "None" else None
 
-                crystal_obj = crystal(*converted)
+                # Create crystal object with only required fields
+                crystal_obj = crystal(
+                    material_id=material_id,
+                    structure=structure,
+                    density=density,
+                    is_metal=is_metal
+                )
 
-                data.append((crystal_obj, structure))
+                data.append(crystal_obj)
 
             except Exception as e:
                 print(f"Error loading line {i+1}: {str(e)}")

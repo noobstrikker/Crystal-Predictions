@@ -53,8 +53,17 @@ def objective(trial: optuna.Trial, dataset: str, max_epochs: int = 100) -> float
     # Load & split data only once per trial (OK for ≤ few hundred trials)
     raw = load_data_local(dataset)
     train_set, val_set, _ = split_data(raw)
-    train_graphs = build_graph_batch(extract_label(train_set))
-    val_graphs = build_graph_batch(extract_label(val_set))
+    
+    # Create (crystal_obj, structure) tuples
+    train_data = [(crystal_obj, crystal_obj.structure) for crystal_obj in train_set]
+    val_data = [(crystal_obj, crystal_obj.structure) for crystal_obj in val_set]
+    
+    # Extract labels and build graphs
+    train_labeled = extract_label(train_data)
+    val_labeled = extract_label(val_data)
+    
+    train_graphs = build_graph_batch(train_labeled)
+    val_graphs = build_graph_batch(val_labeled)
 
     train_loader = DataLoader(train_graphs, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_graphs, batch_size=batch_size)
@@ -63,7 +72,7 @@ def objective(trial: optuna.Trial, dataset: str, max_epochs: int = 100) -> float
                        hidden_channels=hidden).to(DEVICE)
 
     optimiser = torch.optim.Adam(model.parameters(), lr=lr)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
 
     stopper = EarlyStopper(patience=15, delta=1e-4)
     best_val = float("inf")
