@@ -14,6 +14,7 @@ from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
 from GNN.train import train_model, evaluate_model, evaluate_model_performance
 from utils import EarlyStopper
+from optuna_tune import run_search
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
@@ -177,10 +178,41 @@ def action_infer() -> None:
     print(f"Test loss on {dataset_name}: {t_loss:.4f}")
     evaluate_model_performance(model, test_loader, device, property_name="Target Property")
 
+def action_tune() -> None:
+    """
+    Launch Optuna hyper-parameter search for a chosen dataset.
+    Search space:
+        • batch_size       {16, 32, 64, 128}
+        • learning_rate    log-uniform 1e-5 … 1e-2
+        • hidden_channels  {32, 64, 128, 256}
+    """
+    print("=== Hyper-parameter Tuning ===")
+
+    # same discovery code action_train uses
+    if not DATASET_DIR.exists():
+        print("Dataset directory not found.")
+        return
+    datasets = sorted(p.stem for p in DATASET_DIR.glob("*.txt"))
+    if not datasets:
+        print("No datasets available.")
+        return
+
+    name   = ask_choice("Select dataset", datasets)
+    trials = ask_value("Number of Optuna trials", 40, int)
+    jobs   = ask_value("Parallel jobs (processes)", 1, int)
+
+    try:
+        path, best = run_search(name, n_trials=trials, n_jobs=jobs)
+        print("\nBest params:", best)
+        print(f"Saved to {path}")
+    except Exception as err:
+        print(f"[ERROR] Auto-tune failed: {err}")
+
 ACTIONS = {
     "Retrieve new dataset": action_retrieve,
     "Train a model": action_train,
     "Use a model on a dataset": action_infer,
+    "Hyper-parameter tuning": action_tune,
     "Exit": None,
 }
 
