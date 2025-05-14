@@ -171,7 +171,7 @@ def action_infer() -> None:
     test_graphs = build_graph_batch(extract_label(raw_data))
     test_loader = DataLoader(test_graphs, batch_size=64)
     sample_graph = test_graphs[0]
-    model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=64).to(device)
+    model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=256).to(device)
     model.load_state_dict(torch.load(MODELS_DIR / model_name, map_location=device))
     criterion = torch.nn.CrossEntropyLoss()
     t_loss = evaluate_model(model, test_loader, criterion, device)
