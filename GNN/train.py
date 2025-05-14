@@ -15,7 +15,11 @@ def train_model(model, train_loader, optimizer, criterion, device):
         optimizer.zero_grad()
         
         output = model(batch)
-        loss = criterion(output, batch.y.squeeze().long())
+        # Ensure output and target are both float tensors with correct shapes
+        output = output.float().view(-1)  # Shape: [batch_size]
+        target = batch.y.float().view(-1)  # Shape: [batch_size]
+        
+        loss = criterion(output, target)
         
         loss.backward()
         optimizer.step()
@@ -32,10 +36,11 @@ def evaluate_loss_model(model, test_loader, criterion, device):
         for batch in test_loader:
             batch = batch.to(device)
             output = model(batch)
-            if isinstance(output, tuple):  # Handle multi-output models
-                output = output[0]  # Use classification output only
+            # Ensure output and target are both float tensors with correct shapes
+            output = output.float().view(-1)  # Shape: [batch_size]
+            target = batch.y.float().view(-1)  # Shape: [batch_size]
             
-            loss = criterion(output, batch.y.squeeze().long())
+            loss = criterion(output, target)
             total_loss += loss.item()
     
     return total_loss / len(test_loader)

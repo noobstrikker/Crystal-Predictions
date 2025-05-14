@@ -15,6 +15,7 @@ from GNN.my_model import CrystalGNN
 from GNN.train import train_model, evaluate_loss_model
 from GNN.evaluation import evaluate_model_performance, evaluate_model
 from utils import EarlyStopper
+from optuna_tune import run_search
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
@@ -115,9 +116,17 @@ def action_train() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     raw_data = load_data_local(args.dataset)
     train_set, val_set, test_set = split_data(raw_data)
-    train_graphs = build_graph_batch(extract_label(train_set))
-    val_graphs = build_graph_batch(extract_label(val_set))
-    test_graphs = build_graph_batch(extract_label(test_set))
+    
+    # Extract labels first
+    train_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in train_set])
+    val_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in val_set])
+    test_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in test_set])
+    
+    # Then build graphs
+    train_graphs = build_graph_batch(train_data)
+    val_graphs = build_graph_batch(val_data)
+    test_graphs = build_graph_batch(test_data)
+    
     train_loader = DataLoader(train_graphs, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_graphs, batch_size=args.batch_size)
     test_loader = DataLoader(test_graphs, batch_size=args.batch_size)
@@ -125,7 +134,7 @@ def action_train() -> None:
     model_path.parent.mkdir(parents=True, exist_ok=True)
     model = CrystalGNN(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
     optimiser = optim.Adam(model.parameters(), lr=args.lr)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     patience = 15
     early_stopper =EarlyStopper(patience=args.patience, delta=1e-4)
     best_val = float("inf")
@@ -171,17 +180,48 @@ def action_infer() -> None:
     test_graphs = build_graph_batch(extract_label(raw_data))
     test_loader = DataLoader(test_graphs, batch_size=64)
     sample_graph = test_graphs[0]
-    model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=64).to(device)
+    model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=256).to(device)
     model.load_state_dict(torch.load(MODELS_DIR / model_name, map_location=device))
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     t_loss = evaluate_model(model, test_loader, criterion, device)
     print(f"Test loss on {dataset_name}: {t_loss:.4f}")
     evaluate_model_performance(model, test_loader, device, property_name="Target Property")
+
+def action_tune() -> None:
+    """
+    Launch Optuna hyper-parameter search for a chosen dataset.
+    Search space:
+        • batch_size       {16, 32, 64, 128}
+        • learning_rate    log-uniform 1e-5 … 1e-2
+        • hidden_channels  {32, 64, 128, 256}
+    """
+    print("=== Hyper-parameter Tuning ===")
+
+    # same discovery code action_train uses
+    if not DATASET_DIR.exists():
+        print("Dataset directory not found.")
+        return
+    datasets = sorted(p.stem for p in DATASET_DIR.glob("*.txt"))
+    if not datasets:
+        print("No datasets available.")
+        return
+
+    name   = ask_choice("Select dataset", datasets)
+    trials = ask_value("Number of Optuna trials", 40, int)
+    jobs   = ask_value("Parallel jobs (processes)", 1, int)
+
+    try:
+        path, best = run_search(name, n_trials=trials, n_jobs=jobs)
+        print("\nBest params:", best)
+        print(f"Saved to {path}")
+    except Exception as err:
+        print(f"[ERROR] Auto-tune failed: {err}")
 
 ACTIONS = {
     "Retrieve new dataset": action_retrieve,
     "Train a model": action_train,
     "Use a model on a dataset": action_infer,
+    "Hyper-parameter tuning": action_tune,
     "Exit": None,
 }
 
