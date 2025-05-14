@@ -31,7 +31,7 @@ from data_preprocessing import split_data, extract_label
 from data_retrival import load_data_local
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
-from GNN.train import train_model, evaluate_model
+from GNN.train import train_model, evaluate_loss_model as evaluate_model
 from utils import EarlyStopper
 
 ROOT = Path(__file__).resolve().parent

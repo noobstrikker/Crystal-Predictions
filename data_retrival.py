@@ -1,6 +1,7 @@
 from crystalclass import crystal
 from mp_api.client import MPRester
 from monty.json import MontyEncoder, MontyDecoder
+from itertools import islice
 import json
 import os
 
@@ -11,16 +12,18 @@ API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 def get_materials_data(size):
     with MPRester(API_KEY) as mpr:
         # Get summaries
-        summaries = list(mpr.materials.summary.search(
+        docs = mpr.materials.summary.search(
             fields = ["material_id","band_gap", "cbm", "density", "density_atomic", "dos_energy_down", "dos_energy_up", "e_electronic",
                     "e_ij_max", "e_ionic", "e_total", "efermi", "energy_above_hull", "energy_per_atom", "equilibrium_reaction_energy_per_atom",
                     "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
                     "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
                     "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
                     "weighted_work_function","is_metal"],
-            chunk_size=size,
-            num_chunks=1
-        ))[:size]
+            chunk_size=1000,
+            num_chunks=None
+        )
+        summaries = list(islice(docs, size))
+
 
         results = []
         for summary in summaries:

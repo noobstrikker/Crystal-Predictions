@@ -13,7 +13,7 @@ from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
 from GNN.train import train_model, evaluate_loss_model
-from GNN.evaluation import evaluate_model_performance, evaluate_model
+from GNN.evaluation import evaluate_model_performance
 from utils import EarlyStopper
 from optuna_tune import run_search
 
