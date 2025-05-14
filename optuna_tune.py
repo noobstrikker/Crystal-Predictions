@@ -1,9 +1,9 @@
 """tune_optuna.py ▸ Automatic hyper‑parameter search with Optuna
 
 This script performs Bayesian optimisation over three knobs:
-  • batch_size        – categorical [16, 32, 64, 128]
-  • learning_rate     – log‑uniform 1e‑5 … 1e‑2
-  • hidden_channels   – categorical [32, 64, 128, 256]
+  • batch_size         categorical [16, 32, 64, 128]
+  • learning_rate      log-uniform 1e-5 … 1e-2
+  • hidden_channels    categorical [32, 64, 128, 256]
 
 It reuses the same data pipeline and model/training utilities that
 `main.py` uses, so no other code has to change.
@@ -43,12 +43,12 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def objective(trial: optuna.Trial, dataset: str, max_epochs: int = 100) -> float:
-    """A single optimisation trial – builds loaders, model, trains, returns val loss."""
+    """A single optimisation trial - builds loaders, model, trains, returns val loss."""
 
     # Hyper‑parameters to sample
-    batch_size: int = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
+    batch_size: int = trial.suggest_categorical("batch_size", [16, 32, 64, 128, 256, 512])
     lr: float = trial.suggest_loguniform("learning_rate", 1e-5, 1e-2)
-    hidden: int = trial.suggest_categorical("hidden_channels", [32, 64, 128, 256])
+    hidden: int = trial.suggest_categorical("hidden_channels", [32, 64, 128, 256, 512])
 
     # Load & split data only once per trial (OK for ≤ few hundred trials)
     raw = load_data_local(dataset)
@@ -115,7 +115,7 @@ def run_search(dataset: str, n_trials: int, n_jobs: int) -> Tuple[str, Dict]:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Optuna hyper‑parameter search")
+    parser = argparse.ArgumentParser(description="Optuna hyper-parameter search")
     parser.add_argument("--dataset", required=True, help="Dataset name (without .txt)")
     parser.add_argument("--trials", type=int, default=40, help="Number of Optuna trials")
     parser.add_argument("--jobs", type=int, default=1, help="Parallel jobs (processes)")
@@ -126,5 +126,3 @@ if __name__ == "__main__":
         raise FileNotFoundError(f"Dataset file not found: {dataset_path}")
 
     run_search(args.dataset, n_trials=args.trials, n_jobs=args.jobs)
-    print("Done!")
-    print("Exiting optuna...")
