@@ -1,6 +1,7 @@
 import argparse
 import json
 import traceback
+import os
 from pathlib import Path
 from typing import Any, List
 
@@ -12,10 +13,13 @@ from data_retrival import get_materials_data, save_data_local, load_data_local
 from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
-from GNN.train import train_model, evaluate_loss_model
+from GNN.train import train_model
+from GNN.train import evaluate_loss_model as evaluate_model
 from GNN.evaluation import evaluate_model_performance
+from GNN.evaluation import evaluate_predictions
 from utils import EarlyStopper
 from optuna_tune import run_search
+
 
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
@@ -159,33 +163,60 @@ def action_train() -> None:
     evaluate_model_performance(model, test_loader, device, property_name="Target Property")
 
 def action_infer() -> None:
-    if not MODELS_DIR.exists():
-        print("No models folder.")
+    """Pick a trained model and a dataset, then print  material_id → metal / non-metal."""
+    import torch
+    from pathlib import Path
+    from torch_geometric.data import DataLoader
+
+    print("=== Inference ===")
+
+    # ── 1. select model file ──────────────────────────────────────────
+    MODELS_DIR = Path("trained_models")
+    models = sorted(p.name for p in MODELS_DIR.glob("*.pth"))
+    if not models:
+        print("No models found in 'trained_models/'. Train first.")
         return
-    model_files = [p.name for p in MODELS_DIR.glob("*.pth")]
-    if not model_files:
-        print("No .pth models found.")
-        return
-    model_name = ask_choice("Choose model", model_files)
-    if not DATASET_DIR.exists():
-        print("Dataset directory not found.")
-        return
-    datasets = sorted(p.stem for p in DATASET_DIR.glob("*.txt"))
+    model_name = ask_choice("Select model", models)
+
+    # ── 2. select dataset file ───────────────────────────────────────
+    DATA_DIR = Path("DownloadedCrystalProperties")
+    datasets = sorted(p.stem for p in DATA_DIR.glob("*.txt"))
     if not datasets:
-        print("No datasets available.")
+        print("No datasets found in 'DownloadedCrystalProperties/'.")
         return
-    dataset_name = ask_choice("Choose dataset", datasets)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    raw_data = load_data_local(dataset_name)
-    test_graphs = build_graph_batch(extract_label(raw_data))
-    test_loader = DataLoader(test_graphs, batch_size=64)
-    sample_graph = test_graphs[0]
-    model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=256).to(device)
-    model.load_state_dict(torch.load(MODELS_DIR / model_name, map_location=device))
-    criterion = torch.nn.BCEWithLogitsLoss()
-    t_loss = evaluate_model(model, test_loader, criterion, device)
-    print(f"Test loss on {dataset_name}: {t_loss:.4f}")
-    evaluate_model_performance(model, test_loader, device, property_name="Target Property")
+    dataset_name = ask_choice("Select dataset", datasets)
+
+    # ── 3. load data & build graphs (NO extract_label) ───────────────
+    raw_data = load_data_local(dataset_name)                  # list of crystal objs
+    graphs   = build_graph_batch([(c, c.structure) for c in raw_data])
+    loader   = DataLoader(graphs, batch_size=64)
+
+    sample  = graphs[0]                                       # << we need this
+    device  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # ── 4. build model with correct hidden size, load weights ───────
+    state_path = MODELS_DIR / model_name
+    state      = torch.load(state_path, map_location=device)
+    hidden     = state["node_encoder.weight"].shape[0]
+
+    model = CrystalGNN(num_features=sample.num_features,
+                       hidden_channels=hidden).to(device)
+    model.load_state_dict(state)
+    model.eval()
+
+    # ── 5. run inference ─────────────────────────────────────────────
+    preds = []
+    with torch.no_grad():
+        for batch in loader:
+            logits = model(batch.to(device))
+            probs  = torch.sigmoid(logits).view(-1)
+            preds.extend((probs > 0.5).int().cpu().tolist())
+
+    # ── 6. pretty-print results ──────────────────────────────────────
+    print(f"\nPredicted metallicity for '{dataset_name}':")
+    for crystal_obj, pred in zip(raw_data, preds):
+        label = "metal" if pred else "non-metal"
+        print(f"{crystal_obj.material_id:<15} → {label}")
 
 def action_tune() -> None:
     """
