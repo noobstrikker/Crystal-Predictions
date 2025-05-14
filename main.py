@@ -115,9 +115,17 @@ def action_train() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     raw_data = load_data_local(args.dataset)
     train_set, val_set, test_set = split_data(raw_data)
-    train_graphs = build_graph_batch(extract_label(train_set))
-    val_graphs = build_graph_batch(extract_label(val_set))
-    test_graphs = build_graph_batch(extract_label(test_set))
+    
+    # Extract labels first
+    train_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in train_set])
+    val_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in val_set])
+    test_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in test_set])
+    
+    # Then build graphs
+    train_graphs = build_graph_batch(train_data)
+    val_graphs = build_graph_batch(val_data)
+    test_graphs = build_graph_batch(test_data)
+    
     train_loader = DataLoader(train_graphs, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_graphs, batch_size=args.batch_size)
     test_loader = DataLoader(test_graphs, batch_size=args.batch_size)
@@ -125,7 +133,7 @@ def action_train() -> None:
     model_path.parent.mkdir(parents=True, exist_ok=True)
     model = CrystalGNN(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
     optimiser = optim.Adam(model.parameters(), lr=args.lr)
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     patience = 15
     early_stopper =EarlyStopper(patience=args.patience, delta=1e-4)
     best_val = float("inf")
@@ -173,7 +181,7 @@ def action_infer() -> None:
     sample_graph = test_graphs[0]
     model = CrystalGNN(num_features=sample_graph.num_features, hidden_channels=256).to(device)
     model.load_state_dict(torch.load(MODELS_DIR / model_name, map_location=device))
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = torch.nn.BCEWithLogitsLoss()
     t_loss = evaluate_model(model, test_loader, criterion, device)
     print(f"Test loss on {dataset_name}: {t_loss:.4f}")
     evaluate_model_performance(model, test_loader, device, property_name="Target Property")
