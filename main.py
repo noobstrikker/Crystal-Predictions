@@ -12,7 +12,8 @@ from data_retrival import get_materials_data, save_data_local, load_data_local
 from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN
-from GNN.train import train_model, evaluate_model, evaluate_model_performance
+from GNN.train import train_model, evaluate_loss_model
+from GNN.evaluation import evaluate_model_performance, evaluate_model
 from utils import EarlyStopper
 
 ROOT_DIR = Path(__file__).resolve().parent
