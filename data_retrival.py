@@ -34,6 +34,33 @@ def get_materials_data(size):
                 print(f"Failed to get structure for {summary.material_id}: {e}")
                 continue
         return results
+    
+def get_single_materials(name):
+    mpname = "mp-"+str(name)
+    with MPRester(API_KEY) as mpr:
+        # Get summaries
+        docs = mpr.materials.summary.search(
+            material_ids=[mpname],
+            fields = ["material_id","band_gap", "cbm", "density", "density_atomic", "dos_energy_down", "dos_energy_up", "e_electronic",
+                    "e_ij_max", "e_ionic", "e_total", "efermi", "energy_above_hull", "energy_per_atom", "equilibrium_reaction_energy_per_atom",
+                    "formation_energy_per_atom", "homogeneous_poisson", "n", "shape_factor", "surface_anisotropy", "total_magnetization",
+                    "total_magnetization_normalized_formula_units", "total_magnetization_normalized_vol", "uncorrected_energy_per_atom",
+                    "universal_anisotropy", "vbm", "volume", "weighted_surface_energy", "weighted_surface_energy_EV_PER_ANG2",
+                    "weighted_work_function","is_metal"],
+            
+        )
+        summaries = list(islice(docs, 1))
+
+
+        results = []
+        for summary in summaries:
+            try:
+                structure = mpr.get_structure_by_material_id(summary.material_id)
+                results.append((summary, structure))
+            except Exception as e:
+                print(f"Failed to get structure for {summary.material_id}: {e}")
+                continue
+        return results
 
 #filename is what it is called if we want differnt file thingymabobs to have fun with, we always get the meterials varible from get_materails_data()   
 def save_data_local(filename,data):

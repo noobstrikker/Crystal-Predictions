@@ -7,9 +7,9 @@ if False:
     data = load_data_local("Mads100")
     print(data[99][0].material_id)   
 else:
-    data = get_materials_data(100)
+    data = get_single_materials(1)
     print(f"Retrieved {len(data)} entries")
-    save_data_local("Mads100", data)
+    save_data_local("1material", data)
 
     with open("DownloadedCrystalProperties/Mads100.txt") as f:
         print(f"File has {sum(1 for _ in f)} lines")
