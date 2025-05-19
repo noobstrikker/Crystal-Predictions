@@ -30,7 +30,7 @@ from torch_geometric.data import DataLoader
 from data_preprocessing import split_data, extract_label
 from data_retrival import load_data_local
 from graph_builder import build_graph_batch
-from GNN.my_model import CrystalGNN
+from GNN.my_model import CrystalGNN, CrystalGNNTransformer
 from GNN.train import train_model, evaluate_loss_model as evaluate_model
 from utils import EarlyStopper
 

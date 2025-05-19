@@ -12,7 +12,7 @@ from torch_geometric.data import DataLoader
 from data_retrival import get_materials_data, save_data_local, load_data_local
 from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
-from GNN.my_model import CrystalGNN
+from GNN.my_model import CrystalGNN, CrystalGNNTransformer
 from GNN.train import train_model
 from GNN.train import evaluate_loss_model as evaluate_model
 from GNN.evaluation import evaluate_model_performance
