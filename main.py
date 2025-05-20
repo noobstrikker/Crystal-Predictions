@@ -9,7 +9,7 @@ import torch
 import torch.optim as optim
 from torch_geometric.data import DataLoader
 
-from data_retrival import get_materials_data, save_data_local, load_data_local
+from data_retrival import get_materials_data, get_single_materials, save_data_local, load_data_local
 from data_preprocessing import split_data, extract_label
 from graph_builder import build_graph_batch
 from GNN.my_model import CrystalGNN, CrystalGNNTransformer
@@ -17,10 +17,10 @@ from GNN.train import train_model
 from GNN.train import evaluate_loss_model as evaluate_model
 from GNN.evaluation import evaluate_model_performance
 from GNN.evaluation import evaluate_predictions
-from utils import EarlyStopper
+from utils import EarlyStopper, set_seed, record_run_meta
 from optuna_tune import run_search
 
-
+GLOBAL_SEED: int | None = None
 ROOT_DIR = Path(__file__).resolve().parent
 DATASET_DIR = ROOT_DIR / "DownloadedCrystalProperties"
 CFG_PATH = ROOT_DIR / "config_defaults.json"
@@ -72,17 +72,46 @@ def ensure_pth(filename: str) -> str:
     return filename if filename.lower().endswith(".pth") else filename + ".pth"
 
 def action_retrieve() -> None:
-    name = input("Filename for the new dataset: ").strip()
-    if not name:
-        print("Filename cannot be empty.")
-        return
-    size = ask_value("How many records to fetch", 500, int)
-    data = get_materials_data(size)
+    """
+    Either fetch a whole batch (as before) **or** a single crystal
+    using get_single_materials().
+    """
+    mode = ask_choice(
+        "Retrieve bulk dataset or a single crystal?",
+        ["Bulk dataset", "Single crystal"]
+    )
+
+    if mode == "Bulk dataset":
+        
+        name = input("Filename for the new dataset: ").strip()
+        if not name:
+            print("Filename cannot be empty.")
+            return
+        size = ask_value("How many records to fetch", 500, int)
+        data = get_materials_data(size)
+
+    else:  
+        crystal_id = input("Materials Project ID (e.g. 12345 or mp-12345): ").strip()
+        if not crystal_id:
+            print("ID cannot be empty.")
+            return
+
+        # Accept both “12345” and “mp-12345”
+        crystal_id_clean = crystal_id.removeprefix("mp-")
+        data = get_single_materials(crystal_id_clean)
+
+        # Default filename falls back to the ID
+        name = input("Filename to save the crystal (leave blank for default): ").strip()
+        if not name:
+            name = f"mp_{crystal_id_clean}_single"
+
+    
     if not data:
         print("No data returned.")
         return
+
     save_data_local(name, data)
-    print(f"Saved dataset '{name}' with {len(data)} entries")
+    print(f"Saved {len(data)} record(s) to 'DownloadedCrystalProperties/{name}.txt'")
 
 def parse_train_args(datasets: List[str], defaults: dict[str, Any]) -> argparse.Namespace:
     p = argparse.ArgumentParser(add_help=False)
@@ -117,6 +146,10 @@ def action_train() -> None:
         args.patience = ask_value("patience (early-stop epochs)", args.patience, int)
     if input("Save these values as new defaults? (y/N): ").strip().lower() == "y":
         save_defaults(vars(args))
+    seed = args.seed if getattr(args, "seed", None) is not None else GLOBAL_SEED
+    seed = set_seed(seed)
+    print(f"Using seed: {seed}")
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     raw_data = load_data_local(args.dataset)
     train_set, val_set, test_set = split_data(raw_data)
@@ -136,6 +169,11 @@ def action_train() -> None:
     test_loader = DataLoader(test_graphs, batch_size=args.batch_size)
     model_path = MODELS_DIR / args.output
     model_path.parent.mkdir(parents=True, exist_ok=True)
+    meta_dir  = model_path.parent / "meta"
+    meta_name = f"{model_path.stem}_meta.json"
+    params    = vars(args).copy(); params["seed"] = seed
+    record_run_meta(meta_dir, filename=meta_name,
+                seed=seed, params=params)
     model = CrystalGNN(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
     optimiser = optim.Adam(model.parameters(), lr=args.lr)
     criterion = torch.nn.BCEWithLogitsLoss()
@@ -170,7 +208,7 @@ def action_infer() -> None:
 
     print("=== Inference ===")
 
-    # ── 1. select model file ──────────────────────────────────────────
+    
     MODELS_DIR = Path("trained_models")
     models = sorted(p.name for p in MODELS_DIR.glob("*.pth"))
     if not models:
@@ -178,7 +216,7 @@ def action_infer() -> None:
         return
     model_name = ask_choice("Select model", models)
 
-    # ── 2. select dataset file ───────────────────────────────────────
+    
     DATA_DIR = Path("DownloadedCrystalProperties")
     datasets = sorted(p.stem for p in DATA_DIR.glob("*.txt"))
     if not datasets:
@@ -186,25 +224,26 @@ def action_infer() -> None:
         return
     dataset_name = ask_choice("Select dataset", datasets)
 
-    # ── 3. load data & build graphs (NO extract_label) ───────────────
-    raw_data = load_data_local(dataset_name)                  # list of crystal objs
+    
+    raw_data = load_data_local(dataset_name)                  
     graphs   = build_graph_batch([(c, c.structure) for c in raw_data])
     loader   = DataLoader(graphs, batch_size=64)
 
-    sample  = graphs[0]                                       # << we need this
+    sample  = graphs[0]                                       
     device  = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # ── 4. build model with correct hidden size, load weights ───────
+    
     state_path = MODELS_DIR / model_name
     state      = torch.load(state_path, map_location=device)
     hidden     = state["node_encoder.weight"].shape[0]
+    
 
     model = CrystalGNN(num_features=sample.num_features,
                        hidden_channels=hidden).to(device)
     model.load_state_dict(state)
     model.eval()
 
-    # ── 5. run inference ─────────────────────────────────────────────
+    
     preds = []
     with torch.no_grad():
         for batch in loader:
@@ -212,7 +251,7 @@ def action_infer() -> None:
             probs  = torch.sigmoid(logits).view(-1)
             preds.extend((probs > 0.5).int().cpu().tolist())
 
-    # ── 6. pretty-print results ──────────────────────────────────────
+    
     print(f"\nPredicted metallicity for '{dataset_name}':")
     for crystal_obj, pred in zip(raw_data, preds):
         label = "metal" if pred else "non-metal"
@@ -222,13 +261,13 @@ def action_tune() -> None:
     """
     Launch Optuna hyper-parameter search for a chosen dataset.
     Search space:
-        • batch_size       {16, 32, 64, 128}
+        • batch_size       {16, 32, 64, 128, 256, 512}
         • learning_rate    log-uniform 1e-5 … 1e-2
-        • hidden_channels  {32, 64, 128, 256}
+        • hidden_channels  {32, 64, 128, 256, 512}
     """
     print("=== Hyper-parameter Tuning ===")
 
-    # same discovery code action_train uses
+    
     if not DATASET_DIR.exists():
         print("Dataset directory not found.")
         return
@@ -248,11 +287,19 @@ def action_tune() -> None:
     except Exception as err:
         print(f"[ERROR] Auto-tune failed: {err}")
 
+def action_set_seed() -> None:
+    """Prompt for a seed and make it the session-wide default."""
+    global GLOBAL_SEED
+    txt = input("Random seed (ENTER = random): ").strip()
+    GLOBAL_SEED = set_seed(int(txt) if txt else None)
+    print(f"Global seed set to {GLOBAL_SEED}")
+
 ACTIONS = {
-    "Retrieve new dataset": action_retrieve,
+    "Retrieve new dataset or single crystal": action_retrieve,
     "Train a model": action_train,
     "Use a model on a dataset": action_infer,
     "Hyper-parameter tuning": action_tune,
+    "Set global random seed": action_set_seed,
     "Exit": None,
 }
 
