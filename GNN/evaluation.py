@@ -7,16 +7,6 @@ from torch_geometric.data import DataLoader
 from sklearn.metrics import confusion_matrix, roc_curve, auc
 import seaborn as sns
 
-"""
-Maybe add some visualizations of the model. Supervisor suggested https://pymatgen.org/pymatgen.vis.html.
-Maybe use pymatgen.vis for visualizing the crystal structures.
-
-I think it requires a state dictionary of a trained NN to do.
-"""
-
-"""
-Will be changed a bit, when a model is trained, and we actually have a state dictionary for the best model.
-"""
 
 
 def evaluate_predictions(model, test_loader, device):

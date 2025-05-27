@@ -95,7 +95,7 @@ class CrystalGNN(nn.Module):
 
 class CrystalGNNTransformer(nn.Module):
     """
-    A GNN model that combines transformer layers with graph convolution layers.
+    A GNN model that combines transformerconv layers with graph convolution layers.
     
     Inputs:
         num_features (int): Number of input features per node

@@ -21,8 +21,7 @@ def build_graph(
     # 1) Build node features
     atomic_numbers = []
     for site in structure.sites:
-        # If partial occupancy, you might combine site.species.elements 
-        # but for a single-element site, this works fine:
+        # Get the atomic number of the first element in the site
         element = list(site.species.elements)[0]
         atomic_numbers.append(element.Z)
     
@@ -33,12 +32,12 @@ def build_graph(
     # Normalize the lattice matrix by dividing by the maximum absolute value
     lattice_matrix = structure.lattice.matrix
     # Normalize by the maximum absolute value to keep values in a reasonable range
-    # Add a small epsilon to prevent division by zero if max_abs_val is zero (e.g. vacuum structure with no lattice)
+    # Added small epsilon to prevent division by zero if max_abs_val is zero (e.g. vacuum structure with no lattice)
     max_abs_val = np.max(np.abs(lattice_matrix))
     if max_abs_val > 1e-8: # only normalize if max_abs_val is not zero
         lattice_matrix = lattice_matrix / max_abs_val
     else: # if lattice_matrix is all zeros or very small values.
-        lattice_matrix = lattice_matrix # keep it as is or handle as an error/special case if needed
+        lattice_matrix = lattice_matrix
 
     # Reshape to (1, 9) to ensure proper batching
     lattice_features = torch.tensor(lattice_matrix.flatten(), dtype=torch.float).view(1, 9)
@@ -79,7 +78,7 @@ def build_graph(
         
         # Add periodic image displacement
         displacement = np.dot(image, structure.lattice.matrix)
-        pos_j_displaced = pos_j + displacement # use a new variable for clarity
+        pos_j_displaced = pos_j + displacement
         
         # Calculate direction vector
         direction = pos_j_displaced - pos_i
@@ -160,7 +159,6 @@ def build_graph_batch(
                 print(f"Warning: Item {i} (type: {type(item)}) has .structure but it's not a Pymatgen Structure (type: {type(item.structure)}). Skipping.")
         
         # Priority 2: Tuple of 3 - e.g., (identifier, pymatgen_structure, label_value)
-        # Based on original 'Case 1' logic: structure = item[1], label = item[2]
         elif isinstance(item, tuple) and len(item) == 3:
             structure_part = item[1]
             label_part = item[2]
@@ -170,7 +168,6 @@ def build_graph_batch(
                 print(f"Warning: Item {i} is a 3-tuple, but element 1 (expected Pymatgen Structure) is type {type(structure_part)}. Skipping.")
         
         # Priority 3: Tuple of 2 - e.g., (properties_object, pymatgen_structure)
-        # Based on original 'Case 2' logic: structure = item[1], label = item[0].is_metal
         elif isinstance(item, tuple) and len(item) == 2:
             props_part = item[0]
             structure_part = item[1]
@@ -180,7 +177,6 @@ def build_graph_batch(
                     data_obj = build_graph(structure_part, label=label_to_process, cutoff=cutoff)
                 else:
                     # If props_part doesn't have 'is_metal', build graph without an explicit label from props_part.
-                    # You might decide to extract a label differently or raise an error if essential.
                     print(f"Warning: Item {i} is a 2-tuple with a valid Structure, but element 0 (type: {type(props_part)}) lacks an 'is_metal' attribute. Building graph without this specific label.")
                     data_obj = build_graph(structure_part, label=None, cutoff=cutoff)
             else:
@@ -193,10 +189,7 @@ def build_graph_batch(
         # If item was not processed by any of the above conditional blocks
         if data_obj is not None:
             results.append(data_obj)
-        else:
-            # This 'else' corresponds to data_obj remaining None after all checks.
-            # This means the 'if/elif' chain was exhausted without a match, or a condition within a branch failed (e.g. structure not Structure instance)
-            # The specific print warnings within the branches already cover most failure reasons.
+        else:            # If we reach here, it means the item did not match any expected format.
             # This is a fallback for any unhandled item types.
             if not (hasattr(item, 'structure') and hasattr(item, 'is_metal')) and \
                not (isinstance(item, tuple) and (len(item) == 3 or len(item) == 2)) and \

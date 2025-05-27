@@ -5,7 +5,7 @@ from itertools import islice
 import json
 import os
 
-#ik abuse min key :)
+#this is the API key for the Materials Project. You can get your own key by signing up at https://materialsproject.org
 API_KEY = 'JlJnqQljbO40Ooy3aGrORBR29rhD6eXO'
 
 #size is the amount of crystals we wanted to importet
@@ -100,7 +100,6 @@ def load_data_local(filename, amount=None):
         material_id_idx = header.index("material_id")
         density_idx = header.index("density")
         is_metal_idx = header.index("is_metal")
-        structure_idx = len(header) - 1  # Try to get structure.json from last column
 
         for i, line in enumerate(file):
             if amount is not None and i >= amount:
