@@ -1,0 +1,10 @@
+{
+  "dataset": "Cry10k",
+  "interactive": false,
+  "output": "best_model.pth",
+  "batch_size": 256,
+  "epochs": 500,
+  "lr": 0.000734368169438926,
+  "hidden_channels": 64,
+  "patience": 35
+}

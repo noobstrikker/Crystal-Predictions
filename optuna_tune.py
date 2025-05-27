@@ -68,7 +68,7 @@ def objective(trial: optuna.Trial, dataset: str, max_epochs: int = 100) -> float
     train_loader = DataLoader(train_graphs, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_graphs, batch_size=batch_size)
 
-    model = CrystalGNN(num_features=train_graphs[0].num_features,
+    model = CrystalGNNTransformer(num_features=train_graphs[0].num_features,
                        hidden_channels=hidden).to(DEVICE)
 
     optimiser = torch.optim.Adam(model.parameters(), lr=lr)

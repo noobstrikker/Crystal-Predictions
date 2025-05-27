@@ -96,11 +96,10 @@ def action_retrieve() -> None:
             print("ID cannot be empty.")
             return
 
-        # Accept both “12345” and “mp-12345”
+        # Accepts both “12345” and “mp-12345”
         crystal_id_clean = crystal_id.removeprefix("mp-")
         data = get_single_materials(crystal_id_clean)
 
-        # Default filename falls back to the ID
         name = input("Filename to save the crystal (leave blank for default): ").strip()
         if not name:
             name = f"mp_{crystal_id_clean}_single"
@@ -154,12 +153,12 @@ def action_train() -> None:
     raw_data = load_data_local(args.dataset)
     train_set, val_set, test_set = split_data(raw_data)
     
-    # Extract labels first
+
     train_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in train_set])
     val_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in val_set])
     test_data = extract_label([(crystal_obj, crystal_obj.structure) for crystal_obj in test_set])
     
-    # Then build graphs
+    
     train_graphs = build_graph_batch(train_data)
     val_graphs = build_graph_batch(val_data)
     test_graphs = build_graph_batch(test_data)
@@ -174,7 +173,7 @@ def action_train() -> None:
     params    = vars(args).copy(); params["seed"] = seed
     record_run_meta(meta_dir, filename=meta_name,
                 seed=seed, params=params)
-    model = CrystalGNN(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
+    model = CrystalGNNTransformer(num_features=train_graphs[0].num_features, hidden_channels=args.hidden_channels).to(device)
     optimiser = optim.Adam(model.parameters(), lr=args.lr)
     criterion = torch.nn.BCEWithLogitsLoss()
     patience = 15
@@ -238,7 +237,7 @@ def action_infer() -> None:
     hidden     = state["node_encoder.weight"].shape[0]
     
 
-    model = CrystalGNN(num_features=sample.num_features,
+    model = CrystalGNNTransformer(num_features=sample.num_features,
                        hidden_channels=hidden).to(device)
     model.load_state_dict(state)
     model.eval()
